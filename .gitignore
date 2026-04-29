@@ -50,12 +50,12 @@ project.fragment.lock.json
 artifacts/
 
 # --- ASP.NET / Blazor ---
-wwwroot/lib/
-wwwroot/dist/
+# (wwwroot/lib içerir Blazor template'inin bootstrap'ını — commit edilir)
 node_modules/
-appsettings.*.json
-!appsettings.json
-!appsettings.Development.json.example
+wwwroot/dist/
+appsettings.Production.json
+appsettings.Staging.json
+appsettings.Local.json
 secrets.json
 *.pfx
 *.p12

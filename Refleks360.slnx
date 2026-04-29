@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Refleks360.Application/Refleks360.Application.csproj" />
+    <Project Path="src/Refleks360.Domain/Refleks360.Domain.csproj" />
+    <Project Path="src/Refleks360.Infrastructure/Refleks360.Infrastructure.csproj" />
+    <Project Path="src/Refleks360.Web/Refleks360.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Refleks360.Application.Tests/Refleks360.Application.Tests.csproj" />
+    <Project Path="tests/Refleks360.Domain.Tests/Refleks360.Domain.Tests.csproj" />
+    <Project Path="tests/Refleks360.Web.Tests/Refleks360.Web.Tests.csproj" />
+  </Folder>
+</Solution>
