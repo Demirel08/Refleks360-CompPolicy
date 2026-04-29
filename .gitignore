@@ -1,0 +1,103 @@
+# ============================================================
+# Refleks360-CompPolicy — .gitignore
+# Visual Studio + .NET 10 + Blazor Server + EF Core
+# ============================================================
+
+# --- Build output ---
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+**/[Pp]ublish/
+**/PublishProfiles/*.user
+
+# --- Visual Studio ---
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.ide/
+*.swp
+
+# --- Rider / ReSharper ---
+.idea/
+*.DotSettings.user
+_ReSharper*/
+
+# --- Test results ---
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+TestResult.xml
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+
+# --- NuGet ---
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# --- ASP.NET / Blazor ---
+wwwroot/lib/
+wwwroot/dist/
+node_modules/
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json.example
+secrets.json
+*.pfx
+*.p12
+
+# --- EF Core ---
+*.mdf
+*.ldf
+*.ndf
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# --- Office temp ---
+~$*
+
+# --- Local env ---
+.env
+.env.local
+.env.*.local
+
+# --- Playwright ---
+test-results/
+playwright-report/
+playwright/.cache/
+
+# --- Hangfire dashboard local ---
+*.hangfire-local
+
+# --- Sentry/Serilog local files ---
+serilog-*.txt
+
+# --- WiX installer build ---
+*.wixobj
+*.wixpdb
+*.msi
+*.cab
+
+# --- Misc ---
+*.log
+*.tmp
+*.bak
+~*
