@@ -1,10 +1,18 @@
 using Refleks360.Web.Components;
+using Syncfusion.Blazor;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+var syncfusionKey = builder.Configuration["Syncfusion:LicenseKey"];
+if (!string.IsNullOrWhiteSpace(syncfusionKey))
+{
+    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
+}
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddSyncfusionBlazor();
 
 var app = builder.Build();
 
