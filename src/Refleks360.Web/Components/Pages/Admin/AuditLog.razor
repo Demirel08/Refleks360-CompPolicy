@@ -1,0 +1,74 @@
+@page "/admin/audit"
+@attribute [Authorize(Policy = Permissions.AuditView)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Audit
+@using Refleks360.Domain.Security
+@inject IAuditQueryService Audit
+@inject IJSRuntime JS
+
+<PageTitle>Audit Log</PageTitle>
+
+<h1>Audit Log</h1>
+<p class="text-muted small">Tüm veri değişiklikleri append-only olarak kaydedilir. KVKK denetiminde tam izleme.</p>
+
+<div class="card mb-3"><div class="card-body">
+    <div class="row g-2">
+        <div class="col-md-2"><input class="form-control form-control-sm" placeholder="Kullanıcı" @bind="_filter.UserName" /></div>
+        <div class="col-md-2"><input class="form-control form-control-sm" placeholder="Entity tipi" @bind="_filter.EntityType" /></div>
+        <div class="col-md-2"><input class="form-control form-control-sm" placeholder="Entity anahtarı" @bind="_filter.EntityKey" /></div>
+        <div class="col-md-2"><input type="date" class="form-control form-control-sm" placeholder="From" @bind="_from" /></div>
+        <div class="col-md-2"><input type="date" class="form-control form-control-sm" placeholder="To" @bind="_to" /></div>
+        <div class="col-md-2 d-flex gap-1">
+            <button class="btn btn-primary btn-sm" @onclick="Search">Ara</button>
+            <button class="btn btn-outline-success btn-sm" @onclick="Export">📊 Export</button>
+        </div>
+    </div>
+</div></div>
+
+@if (_page is null) { <p>Sorgu için "Ara" tıkla.</p> }
+else
+{
+    <p class="text-muted small">Toplam <strong>@_page.Total</strong> kayıt, ilk @_page.Entries.Count gösteriliyor.</p>
+    <table class="table table-sm">
+        <thead>
+            <tr><th>Tarih (UTC)</th><th>Kullanıcı</th><th>İşlem</th><th>Entity</th><th>Anahtar</th><th>Eski</th><th>Yeni</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var a in _page.Entries)
+            {
+                <tr>
+                    <td class="small text-nowrap">@a.TimestampUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td><code>@a.UserName</code></td>
+                    <td>@a.Action</td>
+                    <td>@a.EntityType</td>
+                    <td><code>@a.EntityKey</code></td>
+                    <td class="small text-muted" style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="@a.OldValuesJson">@a.OldValuesJson</td>
+                    <td class="small" style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="@a.NewValuesJson">@a.NewValuesJson</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private AuditFilter _filter = new();
+    private DateTime? _from;
+    private DateTime? _to;
+    private AuditPage? _page;
+
+    private AuditFilter BuildFilter()
+    {
+        _filter.FromUtc = _from?.ToUniversalTime();
+        _filter.ToUtc = _to?.ToUniversalTime();
+        return _filter;
+    }
+
+    private async Task Search() => _page = await Audit.SearchAsync(BuildFilter());
+
+    private async Task Export()
+    {
+        var bytes = await Audit.ExportXlsxAsync(BuildFilter());
+        await JS.InvokeVoidAsync("downloadFromBytes", $"auditlog-{DateTime.Today:yyyyMMdd}.xlsx", Convert.ToBase64String(bytes));
+    }
+}

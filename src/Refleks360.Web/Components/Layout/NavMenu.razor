@@ -75,6 +75,20 @@
                 </NavLink>
             </div>
         </AuthorizeView>
+        <AuthorizeView Policy="@Permissions.TaxParameterView">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/vergi">
+                    <span class="bi bi-receipt-cutoff" aria-hidden="true"></span> Vergi Parametreleri
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Policy="@Permissions.AuditView">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/audit">
+                    <span class="bi bi-journal-text" aria-hidden="true"></span> Audit Log
+                </NavLink>
+            </div>
+        </AuthorizeView>
         <AuthorizeView Policy="@Permissions.UserManage">
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="admin/kullanicilar">

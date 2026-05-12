@@ -1,0 +1,183 @@
+@page "/admin/vergi"
+@attribute [Authorize(Policy = Permissions.TaxParameterView)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.TaxAdmin
+@using Refleks360.Domain.Security
+@inject ITaxAdminService Tax
+
+<PageTitle>Vergi Parametreleri</PageTitle>
+
+<h1>Vergi Parametreleri</h1>
+
+<div class="row g-2 mb-3 align-items-end">
+    <div class="col-md-2">
+        <label class="form-label small">Yıl</label>
+        <select class="form-select" @bind="_year" @bind:after="LoadAsync">
+            @foreach (var y in _years) { <option value="@y">@y</option> }
+        </select>
+    </div>
+    <AuthorizeView Policy="@Permissions.TaxParameterEdit" Context="ed">
+        <div class="col-md-3">
+            <button class="btn btn-outline-primary btn-sm" @onclick="OpenCloneDialog">+ Sonraki Yılı Kopyala</button>
+        </div>
+    </AuthorizeView>
+</div>
+
+@if (_cloneOpen)
+{
+    <div class="alert alert-secondary">
+        <strong>@_year + 1 yılını @_year değerleriyle oluştur:</strong>
+        <button class="btn btn-primary btn-sm ms-2" @onclick="DoClone">Onayla</button>
+        <button class="btn btn-secondary btn-sm" @onclick="@(() => _cloneOpen = false)">İptal</button>
+        @if (_msg is not null) { <span class="ms-3">@_msg</span> }
+    </div>
+}
+
+@if (_detail is null) { <p>Yükleniyor...</p> }
+else
+{
+    <div class="card mb-3"><div class="card-body">
+        <h2 class="h6">Yıl Bazlı Sabitler</h2>
+        <div class="row g-2">
+            <div class="col-md-2"><label class="form-label small">SGK İşçi %</label><input type="number" step="0.0001" class="form-control" value="@(_year_dto.SgkEmployeeRate*100)" @oninput="@((ChangeEventArgs e) => _year_dto = _year_dto with { SgkEmployeeRate = Dec(e.Value)/100m })" /></div>
+            <div class="col-md-2"><label class="form-label small">İşsizlik İşçi %</label><input type="number" step="0.0001" class="form-control" value="@(_year_dto.UnemploymentEmployeeRate*100)" @oninput="@((ChangeEventArgs e) => _year_dto = _year_dto with { UnemploymentEmployeeRate = Dec(e.Value)/100m })" /></div>
+            <div class="col-md-2"><label class="form-label small">SGK İşveren %</label><input type="number" step="0.0001" class="form-control" value="@(_year_dto.SgkEmployerRate*100)" @oninput="@((ChangeEventArgs e) => _year_dto = _year_dto with { SgkEmployerRate = Dec(e.Value)/100m })" /></div>
+            <div class="col-md-2"><label class="form-label small">İşsizlik İşveren %</label><input type="number" step="0.0001" class="form-control" value="@(_year_dto.UnemploymentEmployerRate*100)" @oninput="@((ChangeEventArgs e) => _year_dto = _year_dto with { UnemploymentEmployerRate = Dec(e.Value)/100m })" /></div>
+            <div class="col-md-2"><label class="form-label small">SGK İşv. İndirim %</label><input type="number" step="0.0001" class="form-control" value="@(_year_dto.SgkEmployerDiscountRate*100)" @oninput="@((ChangeEventArgs e) => _year_dto = _year_dto with { SgkEmployerDiscountRate = Dec(e.Value)/100m })" /></div>
+            <div class="col-md-2"><label class="form-label small">Damga %</label><input type="number" step="0.0001" class="form-control" value="@(_year_dto.StampTaxRate*100)" @oninput="@((ChangeEventArgs e) => _year_dto = _year_dto with { StampTaxRate = Dec(e.Value)/100m })" /></div>
+            <div class="col-md-3 form-check mt-2">
+                <input id="sgkd" type="checkbox" class="form-check-input" checked="@_year_dto.ApplySgkEmployerDiscount" @onchange="@((ChangeEventArgs e) => _year_dto = _year_dto with { ApplySgkEmployerDiscount = (bool)e.Value! })" />
+                <label class="form-check-label" for="sgkd">SGK işveren indirimi varsayılan açık</label>
+            </div>
+        </div>
+        <AuthorizeView Policy="@Permissions.TaxParameterEdit" Context="ed2">
+            <div class="mt-2"><button class="btn btn-primary btn-sm" @onclick="SaveYear">Kaydet</button></div>
+        </AuthorizeView>
+    </div></div>
+
+    <div class="card mb-3"><div class="card-body">
+        <h2 class="h6">Gelir Vergisi Dilimleri</h2>
+        <table class="table table-sm">
+            <thead><tr><th>Sıra</th><th class="text-end">Üst Limit (TL)</th><th class="text-end">Oran %</th><th></th></tr></thead>
+            <tbody>
+                @for (int i = 0; i < _brackets.Count; i++)
+                {
+                    var idx = i;
+                    <tr>
+                        <td>@(idx + 1)</td>
+                        <td><input type="number" class="form-control form-control-sm text-end" value="@_brackets[idx].UpperLimit" @onchange="@((ChangeEventArgs e) => _brackets[idx] = _brackets[idx] with { UpperLimit = Dec(e.Value) })" /></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end" value="@(_brackets[idx].Rate*100)" @onchange="@((ChangeEventArgs e) => _brackets[idx] = _brackets[idx] with { Rate = Dec(e.Value)/100m })" /></td>
+                        <td><button class="btn btn-link btn-sm text-danger p-0" @onclick="@(() => _brackets.RemoveAt(idx))">sil</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <AuthorizeView Policy="@Permissions.TaxParameterEdit" Context="ed3">
+            <button class="btn btn-outline-secondary btn-sm" @onclick="AddBracket">+ Dilim Ekle</button>
+            <button class="btn btn-primary btn-sm ms-2" @onclick="SaveBrackets">Dilimleri Kaydet</button>
+        </AuthorizeView>
+    </div></div>
+
+    <div class="card mb-3"><div class="card-body">
+        <h2 class="h6">Aylık Dönemler (SGK matrah, asgari ücret istisnası)</h2>
+        <table class="table table-sm">
+            <thead><tr><th>Ay</th><th class="text-end">SGK Min</th><th class="text-end">SGK Max</th><th class="text-end">GV İstisna Matrahı</th><th class="text-end">GV İstisna %</th><th class="text-end">Damga İstisna</th></tr></thead>
+            <tbody>
+                @for (int i = 0; i < _periods.Count; i++)
+                {
+                    var idx = i;
+                    <tr>
+                        <td>@_periods[idx].StartMonth.ToString("00")</td>
+                        <td><input type="number" class="form-control form-control-sm text-end" value="@_periods[idx].SgkBaseMin" @onchange="@((ChangeEventArgs e) => _periods[idx] = _periods[idx] with { SgkBaseMin = Dec(e.Value) })" /></td>
+                        <td><input type="number" class="form-control form-control-sm text-end" value="@_periods[idx].SgkBaseMax" @onchange="@((ChangeEventArgs e) => _periods[idx] = _periods[idx] with { SgkBaseMax = Dec(e.Value) })" /></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end" value="@_periods[idx].GvExemptionAmount" @onchange="@((ChangeEventArgs e) => _periods[idx] = _periods[idx] with { GvExemptionAmount = Dec(e.Value) })" /></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end" value="@(_periods[idx].GvExemptionRate*100)" @onchange="@((ChangeEventArgs e) => _periods[idx] = _periods[idx] with { GvExemptionRate = Dec(e.Value)/100m })" /></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end" value="@_periods[idx].StampExemptionAmount" @onchange="@((ChangeEventArgs e) => _periods[idx] = _periods[idx] with { StampExemptionAmount = Dec(e.Value) })" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <AuthorizeView Policy="@Permissions.TaxParameterEdit" Context="ed4">
+            <button class="btn btn-primary btn-sm" @onclick="SavePeriods">Aylık Dönemleri Kaydet</button>
+        </AuthorizeView>
+    </div></div>
+}
+
+@if (_msg is not null) { <div class="alert alert-info">@_msg</div> }
+
+@code {
+    private IReadOnlyList<int> _years = Array.Empty<int>();
+    private int _year;
+    private TaxYearDetail? _detail;
+    private TaxYearAdminDto _year_dto = default!;
+    private List<TaxBracketAdminDto> _brackets = new();
+    private List<MonthlyPeriodAdminDto> _periods = new();
+    private bool _cloneOpen;
+    private string? _msg;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _years = await Tax.GetYearsAsync();
+        _year = _years.FirstOrDefault();
+        if (_year > 0) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _detail = await Tax.GetAsync(_year);
+        if (_detail is not null)
+        {
+            _year_dto = _detail.Year;
+            _brackets = _detail.Brackets.ToList();
+            _periods = _detail.Periods.ToList();
+        }
+    }
+
+    private async Task SaveYear()
+    {
+        await Tax.SaveYearAsync(_year_dto);
+        _msg = "Yıl bazlı sabitler kaydedildi.";
+    }
+
+    private void AddBracket() => _brackets.Add(new TaxBracketAdminDto(0, _brackets.Count, 0m, 0.40m));
+
+    private async Task SaveBrackets()
+    {
+        var withOrder = _brackets.Select((b, i) => b with { OrderIndex = i }).ToList();
+        await Tax.SaveBracketsAsync(_year, withOrder);
+        await LoadAsync();
+        _msg = "Dilimler kaydedildi.";
+    }
+
+    private async Task SavePeriods()
+    {
+        await Tax.SavePeriodsAsync(_year, _periods);
+        _msg = "Aylık dönemler kaydedildi.";
+    }
+
+    private void OpenCloneDialog() => _cloneOpen = true;
+
+    private async Task DoClone()
+    {
+        try
+        {
+            await Tax.CloneFromAsync(_year, _year + 1);
+            _years = await Tax.GetYearsAsync();
+            _msg = $"{_year + 1} yılı kopyalandı.";
+            _cloneOpen = false;
+            _year = _year + 1;
+            await LoadAsync();
+        }
+        catch (Exception ex) { _msg = "Hata: " + ex.Message; }
+    }
+
+    private static decimal Dec(object? v)
+    {
+        if (v is null) return 0m;
+        var s = v.ToString();
+        return decimal.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var d)
+            || decimal.TryParse(s, System.Globalization.CultureInfo.GetCultureInfo("tr-TR"), out d)
+            ? d : 0m;
+    }
+}

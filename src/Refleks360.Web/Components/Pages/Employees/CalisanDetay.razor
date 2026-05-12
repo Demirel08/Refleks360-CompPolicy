@@ -10,9 +10,11 @@
 @using Refleks360.Domain.Security
 @inject IMediator Mediator
 @inject IOrganizationLookupService Lookup
+@inject IKvkkService Kvkk
 @inject NavigationManager Nav
 @inject IAuthorizationService AuthZ
 @inject AuthenticationStateProvider AuthState
+@inject IJSRuntime JS
 
 <PageTitle>Çalışan Detayı</PageTitle>
 
@@ -36,7 +38,14 @@ else
                 @_employee.DepartmentName · @_employee.LocationName
             </p>
         </div>
-        <a class="btn btn-outline-secondary btn-sm" href="/calisanlar">← Listeye dön</a>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary btn-sm" href="/calisanlar">← Listeye dön</a>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="ExportKvkk">KVKK Veri İhrac</button>
+            @if (_canDelete)
+            {
+                <button class="btn btn-outline-warning btn-sm" @onclick="Anonymize">KVKK Anonimleştir</button>
+            }
+        </div>
     </div>
 
     @if (_canEdit)
@@ -278,6 +287,22 @@ else
     }
 
     private string TabClass(string tab) => _activeTab == tab ? "active" : "";
+
+    private async Task ExportKvkk()
+    {
+        var bytes = await Kvkk.ExportEmployeeDataAsync(Id);
+        await JS.InvokeVoidAsync("downloadFromBytes", $"kvkk-calisan-{Id}.json", Convert.ToBase64String(bytes));
+    }
+
+    private async Task Anonymize()
+    {
+        var ok = await JS.InvokeAsync<bool>("confirm",
+            "Bu çalışanın kişisel verileri ANONIMLEŞTİRİLECEK (KVKK silme talebi). Sicil korunur, ad/soyad/iletişim sıfırlanır. Devam etmek istiyor musun?");
+        if (!ok) return;
+        var state = await AuthState.GetAuthenticationStateAsync();
+        await Kvkk.AnonymizeEmployeeAsync(Id, state.User.Identity?.Name ?? "system");
+        Nav.NavigateTo("/calisanlar");
+    }
 
     private sealed class FormModel
     {
