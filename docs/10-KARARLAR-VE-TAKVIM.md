@@ -245,19 +245,21 @@ Refleks360.CompPolicy.sln
 
 ---
 
-### Hafta 5 — Çalışan Entity + Liste UI (06-01 → 06-07)
+### Hafta 5 — Çalışan Entity + Liste UI (06-01 → 06-07) ✅ (kısmi)
 
 **Hedef**: Çalışan ekleyebilir, listeleyebilirsin.
 
-- [ ] Entities: `Employee`, `Department`, `Position`, `Location`, `JobGrade`, `JobFamily`
-- [ ] EF migration: `AddEmployeeAndOrgEntities`
-- [ ] Seed data: 1 örnek şirket, 5 departman, 10 pozisyon, 3 lokasyon
-- [ ] `Web/Pages/Employees/EmployeeList.razor` — Syncfusion Grid
-- [ ] Sayfalama, sıralama, arama
-- [ ] `EmployeeDetail.razor` — sekmeli detay (Kişisel/İş/Ücret/Geçmiş)
-- [ ] CRUD MediatR command/query handlers
+- [x] Entities: `EmployeeEntity`, `DepartmentEntity`, `PositionEntity`, `LocationEntity`, `JobGradeEntity`, `JobFamilyEntity`, `CompanyEntity` (+ enum'lar Domain/Organization altında: CareerBand, Gender, EmploymentType, WorkSchedule, EmployeeStatus)
+- [x] EF migration: `20260512195414_AddEmployeeAndOrgEntities` (uygulandı)
+- [x] Seed data: 1 örnek şirket + 3 lokasyon + 5 departman + 4 iş ailesi + 6 kademe + 10 pozisyon + 30 çalışan
+- [x] `Web/Pages/Calisanlar.razor` — Syncfusion Grid (`SfGrid` + filter/sort/paging/search)
+- [x] Sayfalama (15/sayfa), sıralama, Excel-tarzı filtre, search toolbar — Syncfusion Grid yerleşik
+- [ ] `EmployeeDetail.razor` — sekmeli detay (Kişisel/İş/Ücret/Geçmiş) — Hafta 6'ya kayıyor
+- [ ] CRUD MediatR command/query handlers — Hafta 6 başında
 
-**Çıktı**: 100 örnek çalışan ekleyip listeyi görebiliyorsun.
+**Hafta 5 ek not**: Spec'teki 100 örnek hedefi 30'a düşürüldü (geliştirme hızı için yeterli görsel çeşitlilik). Hafta 7'de Excel import ile büyük veri seti yüklenebilecek. Self-referencing FK seed problemi nedeniyle Manager ilişkileri boş bırakıldı; UI/ikinci migration ile sonradan atanır.
+
+**Çıktı**: Login → `/calisanlar` → **Syncfusion Grid'te 30 çalışan** (sicil, ad-soyad, pozisyon, kademe, departman, lokasyon, cinsiyet, durum, işe giriş kolonları) görüntüleniyor. 75 test yeşil. Commit hash güncelleniyor.
 
 ---
 

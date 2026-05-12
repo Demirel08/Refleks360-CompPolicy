@@ -11,20 +11,28 @@
     <strong>Hafta 2</strong> tamamlandı.
 </p>
 
+<p class="lead">
+    Bu uygulama, 200+ çalışanlı şirketler için ücret politikası yönetimi (compensation
+    policy) çözümüdür. 22 haftalık MVP planı içinde şu an <strong>Hafta 5</strong> tamamlandı.
+</p>
+
 <h2 class="h4 mt-4">Hazır olanlar</h2>
 <ul>
-    <li>Clean Architecture solution (Domain / Application / Infrastructure / Web)</li>
-    <li>SQL Server 2022 + <code>Refleks360_Dev</code> veritabanı (Hafta 3'te şema basılacak)</li>
+    <li>Clean Architecture solution (Domain / Application / Infrastructure / Web) + GitHub Actions CI</li>
+    <li>SQL Server 2022 + <code>Refleks360_Dev</code> şeması (Identity, vergi parametreleri, organizasyon, audit log)</li>
+    <li>Cookie tabanlı kimlik doğrulama (ASP.NET Identity, 30 dk sliding, 5 fail → lockout)</li>
     <li>Hesap motoru: 2026 vergi tarifesi, asgari ücret istisnası, SGK matrah clip, dilim geçişleri</li>
     <li>75 test geçti (50 Python regression + 22 hedefli unit + placeholder)</li>
+    <li>Demo veri: 1 şirket, 3 lokasyon, 5 departman, 4 iş ailesi, 6 kademe, 10 pozisyon, 30 çalışan</li>
 </ul>
 
 <h2 class="h4 mt-4">Şimdi deneyebileceğin</h2>
-<p>
-    Hesap motorunu canlı çalıştırmak için
-    <a href="/hesaplama" class="btn btn-primary btn-sm">→ Maaş Hesaplama (demo)</a> sayfasına git.
-</p>
+<div class="d-flex gap-2 flex-wrap">
+    <a href="/calisanlar" class="btn btn-primary">→ Çalışan listesi</a>
+    <a href="/hesaplama" class="btn btn-outline-primary">→ Maaş Hesaplama</a>
+</div>
 
 <p class="text-muted small mt-5">
-    Bu sayfa Hafta 4'te (Layout + Auth) gerçek dashboard'a dönüşecek; şu an proje durumu özetidir.
+    Sıradaki — Hafta 6: RBAC (rol/izin) ve yetki akışı. Çalışan detayı + CRUD MediatR
+    handler'ları da yakında.
 </p>

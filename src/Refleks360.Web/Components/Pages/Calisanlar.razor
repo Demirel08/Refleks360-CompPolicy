@@ -1,0 +1,105 @@
+@page "/calisanlar"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using System.Globalization
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Employees
+@using Refleks360.Domain.Organization
+@using Syncfusion.Blazor.Grids
+@inject IEmployeeQueryService EmployeeQueries
+
+<PageTitle>Çalışanlar</PageTitle>
+
+<h1>Çalışanlar</h1>
+
+@if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else if (_employees is null)
+{
+    <p><em>Yükleniyor...</em></p>
+}
+else
+{
+    <p class="text-muted small">
+        Toplam <strong>@_employees.Count</strong> çalışan görüntüleniyor.
+        Sütun başlığına tıkla sırala; arama kutusuna yaz filtrele; sayfa altından sayfalar arası geç.
+    </p>
+
+    <SfGrid TValue="EmployeeListItem"
+            DataSource="@_employees"
+            AllowPaging="true"
+            AllowSorting="true"
+            AllowFiltering="true"
+            AllowResizing="true"
+            Toolbar="@(new List<string> { "Search" })">
+        <GridPageSettings PageSize="15"></GridPageSettings>
+        <GridFilterSettings Type="FilterType.Excel"></GridFilterSettings>
+        <GridColumns>
+            <GridColumn Field="@nameof(EmployeeListItem.EmployeeNumber)" HeaderText="Sicil"        Width="100"></GridColumn>
+            <GridColumn Field="@nameof(EmployeeListItem.FullName)"       HeaderText="Ad Soyad"     Width="200"></GridColumn>
+            <GridColumn Field="@nameof(EmployeeListItem.PositionTitle)"  HeaderText="Pozisyon"     Width="240"></GridColumn>
+            <GridColumn Field="@nameof(EmployeeListItem.JobGradeCode)"   HeaderText="Kademe"       Width="100" TextAlign="TextAlign.Center"></GridColumn>
+            <GridColumn Field="@nameof(EmployeeListItem.DepartmentName)" HeaderText="Departman"    Width="160"></GridColumn>
+            <GridColumn Field="@nameof(EmployeeListItem.LocationCity)"   HeaderText="Lokasyon"     Width="120"></GridColumn>
+            <GridColumn Field="@nameof(EmployeeListItem.Gender)"         HeaderText="Cinsiyet"     Width="110">
+                <Template>
+                    @{
+                        var row = (context as EmployeeListItem)!;
+                        <span>@GenderText(row.Gender)</span>
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn Field="@nameof(EmployeeListItem.Status)"         HeaderText="Durum"        Width="110">
+                <Template>
+                    @{
+                        var row = (context as EmployeeListItem)!;
+                        <span class="@StatusBadgeClass(row.Status)">@StatusText(row.Status)</span>
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn Field="@nameof(EmployeeListItem.HireDate)"       HeaderText="İşe Giriş"    Width="120" Format="d" Type="ColumnType.Date"></GridColumn>
+        </GridColumns>
+    </SfGrid>
+}
+
+@code {
+    private IReadOnlyList<EmployeeListItem>? _employees;
+    private string? _loadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _employees = await EmployeeQueries.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _loadError = "Çalışan listesi yüklenemedi: " + ex.Message;
+        }
+    }
+
+    private static string GenderText(Gender g) => g switch
+    {
+        Gender.Male => "Erkek",
+        Gender.Female => "Kadın",
+        _ => "Belirtilmemiş",
+    };
+
+    private static string StatusText(EmployeeStatus s) => s switch
+    {
+        EmployeeStatus.Active => "Aktif",
+        EmployeeStatus.OnLeave => "İzinli",
+        EmployeeStatus.Terminated => "Ayrılmış",
+        _ => s.ToString(),
+    };
+
+    private static string StatusBadgeClass(EmployeeStatus s) => s switch
+    {
+        EmployeeStatus.Active => "badge bg-success",
+        EmployeeStatus.OnLeave => "badge bg-warning text-dark",
+        EmployeeStatus.Terminated => "badge bg-secondary",
+        _ => "badge bg-light text-dark",
+    };
+}

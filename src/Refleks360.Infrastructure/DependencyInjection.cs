@@ -55,6 +55,7 @@ public static class DependencyInjection
             .AddDefaultTokenProviders();
 
         services.AddScoped<ITaxParameterService, TaxParameterService>();
+        services.AddScoped<IEmployeeQueryService, EmployeeQueryService>();
 
         return services;
     }
