@@ -1,0 +1,132 @@
+@page "/calisanlar/import"
+@attribute [Authorize(Policy = Permissions.EmployeeImport)]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Forms
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Employees.Import
+@using Refleks360.Domain.Security
+@inject IEmployeeImportService ImportSvc
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>Çalışan Import</PageTitle>
+
+<h1>Çalışan Toplu Import</h1>
+<p class="text-muted small">
+    Excel (.xlsx) dosyasını yükle → önizle → onayla. Dosya formatı için şablonu indir.
+</p>
+
+<div class="d-flex gap-2 mb-3">
+    <button class="btn btn-outline-secondary btn-sm" @onclick="DownloadTemplate">📥 Şablonu İndir</button>
+    <a class="btn btn-outline-secondary btn-sm" href="/calisanlar">← Listeye dön</a>
+</div>
+
+<InputFile OnChange="OnFileSelected" accept=".xlsx" class="form-control mb-3" />
+
+@if (_preview is not null)
+{
+    <div class="alert alert-info">
+        <strong>Önizleme:</strong>
+        Toplam @_preview.TotalRows satır;
+        <span class="text-success">@_preview.Valid geçerli</span> /
+        <span class="text-danger">@_preview.Invalid hatalı</span>.
+        Uygulandığında: @_preview.Inserts yeni, @_preview.Updates güncelleme.
+    </div>
+
+    <table class="table table-sm">
+        <thead>
+            <tr><th>#</th><th>Sicil</th><th>Ad Soyad</th><th>İşlem</th><th>Durum</th><th>Hatalar</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var row in _preview.Rows.Take(200))
+            {
+                <tr class="@(row.IsValid ? "" : "table-danger")">
+                    <td>@row.RowNumber</td>
+                    <td><code>@row.EmployeeNumber</code></td>
+                    <td>@row.FullName</td>
+                    <td>@(row.IsNew ? "Yeni" : "Güncelle")</td>
+                    <td>@(row.IsValid ? "✓" : "✗")</td>
+                    <td class="small">@string.Join("; ", row.Errors)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (_preview.Rows.Count > 200)
+    {
+        <p class="text-muted small">İlk 200 satır gösteriliyor. Geri kalan: @(_preview.Rows.Count - 200)</p>
+    }
+
+    <div class="mt-3">
+        <button class="btn btn-primary" @onclick="ApplyImport" disabled="@(_busy || _preview.Valid == 0)">
+            @($"{_preview.Valid} satırı uygula")
+        </button>
+        @if (_applyResult is not null)
+        {
+            <span class="ms-3 text-success">@_applyResult</span>
+        }
+    </div>
+}
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@code {
+    private byte[]? _fileBytes;
+    private EmployeeImportPreview? _preview;
+    private string? _error;
+    private string? _applyResult;
+    private bool _busy;
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        _applyResult = null;
+        _preview = null;
+
+        var file = e.File;
+        if (file is null) return;
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 25 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            _fileBytes = ms.ToArray();
+            _preview = await ImportSvc.PreviewAsync(_fileBytes);
+        }
+        catch (Exception ex)
+        {
+            _error = "Dosya okunamadı: " + ex.Message;
+        }
+    }
+
+    private async Task ApplyImport()
+    {
+        if (_fileBytes is null) return;
+        _busy = true;
+        _applyResult = null;
+        try
+        {
+            var (ins, upd) = await ImportSvc.ApplyAsync(_fileBytes);
+            _applyResult = $"Tamam: {ins} yeni, {upd} güncelleme uygulandı.";
+            await Task.Delay(1500);
+            Nav.NavigateTo("/calisanlar");
+        }
+        catch (Exception ex)
+        {
+            _error = "Uygulama hatası: " + ex.Message;
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task DownloadTemplate()
+    {
+        var bytes = ImportSvc.GenerateTemplate();
+        await JS.InvokeVoidAsync(
+            "downloadFromBytes",
+            "calisan-sablonu.xlsx",
+            Convert.ToBase64String(bytes));
+    }
+}

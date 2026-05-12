@@ -14,9 +14,14 @@
 
 <div class="d-flex align-items-start justify-content-between mb-3">
     <h1>Çalışanlar</h1>
-    <AuthorizeView Policy="@Permissions.EmployeeEdit">
-        <a class="btn btn-primary btn-sm" href="/calisanlar/yeni">+ Yeni Çalışan</a>
-    </AuthorizeView>
+    <div class="d-flex gap-2">
+        <AuthorizeView Policy="@Permissions.EmployeeImport">
+            <a class="btn btn-outline-primary btn-sm" href="/calisanlar/import">📥 Excel Import</a>
+        </AuthorizeView>
+        <AuthorizeView Policy="@Permissions.EmployeeEdit">
+            <a class="btn btn-primary btn-sm" href="/calisanlar/yeni">+ Yeni Çalışan</a>
+        </AuthorizeView>
+    </div>
 </div>
 
 @if (_loadError is not null)
