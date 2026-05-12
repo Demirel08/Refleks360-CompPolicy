@@ -40,6 +40,9 @@ else
         </div>
         <div class="d-flex gap-2">
             <a class="btn btn-outline-secondary btn-sm" href="/calisanlar">← Listeye dön</a>
+            <AuthorizeView Policy="@Permissions.EmployeeViewSalary" Context="trc">
+                <a class="btn btn-outline-primary btn-sm" href="/calisanlar/@Id/total-rewards">💰 Total Rewards</a>
+            </AuthorizeView>
             <button class="btn btn-outline-secondary btn-sm" @onclick="ExportKvkk">KVKK Veri İhrac</button>
             @if (_canDelete)
             {

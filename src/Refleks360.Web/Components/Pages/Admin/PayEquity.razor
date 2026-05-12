@@ -1,0 +1,85 @@
+@page "/admin/pay-equity"
+@attribute [Authorize(Policy = Permissions.BandView)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.PayEquity
+@using Refleks360.Domain.Security
+@inject IPayEquityService Equity
+
+<PageTitle>Pay Equity</PageTitle>
+
+<h1>Pay Equity Analizi</h1>
+<p class="text-muted small">Cinsiyet bazlı ücret eşitsizlik göstergeleri. Düzeltilmiş gap kademe ağırlıklı.</p>
+
+@if (_data is null) { <p>Yükleniyor...</p> }
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Ham Pay Gap</div>
+            <div class="h3 mb-0 @(_data.OverallRawGap > 5 ? "text-danger" : "text-success")">@_data.OverallRawGap.ToString("F1")%</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Düzeltilmiş Gap (kademe ağırlıklı)</div>
+            <div class="h3 mb-0 @(_data.AdjustedGapPercent > 5 ? "text-danger" : "text-success")">@_data.AdjustedGapPercent.ToString("F1")%</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Erkek Ortalama</div>
+            <div class="h5 mb-0">@_data.OverallMaleAvg.ToString("N0") ₺</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Kadın Ortalama</div>
+            <div class="h5 mb-0">@_data.OverallFemaleAvg.ToString("N0") ₺</div>
+        </div></div></div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card"><div class="card-body">
+                <h2 class="h6">Kademe Kırılımı</h2>
+                <table class="table table-sm">
+                    <thead><tr><th>Kademe</th><th class="text-end">E</th><th class="text-end">E Avg</th><th class="text-end">K</th><th class="text-end">K Avg</th><th class="text-end">Gap %</th></tr></thead>
+                    <tbody>
+                        @foreach (var c in _data.ByGrade)
+                        {
+                            <tr>
+                                <td>@c.Label</td>
+                                <td class="text-end">@c.MaleCount</td>
+                                <td class="text-end">@c.MaleAvg.ToString("N0")</td>
+                                <td class="text-end">@c.FemaleCount</td>
+                                <td class="text-end">@c.FemaleAvg.ToString("N0")</td>
+                                <td class="text-end @(c.RawGapPercent > 10 ? "text-danger" : (c.RawGapPercent > 3 ? "text-warning" : "text-success"))">@c.RawGapPercent.ToString("F1")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div></div>
+        </div>
+        <div class="col-md-6">
+            <div class="card"><div class="card-body">
+                <h2 class="h6">Departman Kırılımı</h2>
+                <table class="table table-sm">
+                    <thead><tr><th>Departman</th><th class="text-end">E</th><th class="text-end">E Avg</th><th class="text-end">K</th><th class="text-end">K Avg</th><th class="text-end">Gap %</th></tr></thead>
+                    <tbody>
+                        @foreach (var c in _data.ByDepartment)
+                        {
+                            <tr>
+                                <td>@c.Label</td>
+                                <td class="text-end">@c.MaleCount</td>
+                                <td class="text-end">@c.MaleAvg.ToString("N0")</td>
+                                <td class="text-end">@c.FemaleCount</td>
+                                <td class="text-end">@c.FemaleAvg.ToString("N0")</td>
+                                <td class="text-end @(c.RawGapPercent > 10 ? "text-danger" : (c.RawGapPercent > 3 ? "text-warning" : "text-success"))">@c.RawGapPercent.ToString("F1")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div></div>
+        </div>
+    </div>
+}
+
+@code {
+    private PayEquityResult? _data;
+    protected override async Task OnInitializedAsync() => _data = await Equity.ComputeAsync();
+}

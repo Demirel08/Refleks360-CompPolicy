@@ -1,0 +1,66 @@
+@page "/admin/heatmap"
+@attribute [Authorize(Policy = Permissions.BandView)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.MultiYear
+@using Refleks360.Domain.Security
+@inject IMultiYearPlanService Mp
+
+<PageTitle>Heat Map</PageTitle>
+
+<h1>Departman × Kademe Heat Map</h1>
+<p class="text-muted small">
+    Her hücre: çalışan sayısı + ortalama compa-ratio. Rengi compa-ratio'ya göre:
+    🟥 &lt; 0.85  · 🟨 0.85-0.95  · 🟩 0.95-1.05  · 🟧 &gt; 1.05
+</p>
+
+@if (_data is null) { <p>Yükleniyor...</p> }
+else
+{
+    <table class="table table-sm table-bordered text-center align-middle" style="font-size: 0.85rem;">
+        <thead>
+            <tr>
+                <th></th>
+                @foreach (var g in _data.Grades) { <th>@g</th> }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var dept in _data.Departments)
+            {
+                <tr>
+                    <th class="text-start" style="background:#f8f9fa">@dept</th>
+                    @foreach (var grade in _data.Grades)
+                    {
+                        var cell = _data.Cells.FirstOrDefault(c => c.Department == dept && c.GradeCode == grade);
+                        if (cell is null || cell.Headcount == 0)
+                        {
+                            <td class="text-muted">—</td>
+                        }
+                        else
+                        {
+                            <td style="background:@CellBg(cell.AvgCompaRatio)">
+                                <div class="fw-bold">@cell.Headcount</div>
+                                <div class="small">@(cell.AvgCompaRatio?.ToString("F2") ?? "—")</div>
+                            </td>
+                        }
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private DepartmentGradeHeatMap? _data;
+
+    protected override async Task OnInitializedAsync() => _data = await Mp.ComputeDeptGradeHeatMapAsync();
+
+    private static string CellBg(decimal? compa) => compa switch
+    {
+        null => "transparent",
+        var v when v < 0.85m => "#f8d7da",
+        var v when v < 0.95m => "#fff3cd",
+        var v when v <= 1.05m => "#d1e7dd",
+        _ => "#fde2cc",
+    };
+}

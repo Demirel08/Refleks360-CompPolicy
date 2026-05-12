@@ -1,0 +1,86 @@
+@page "/admin/multi-year"
+@attribute [Authorize(Policy = Permissions.ReportView)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.MultiYear
+@using Refleks360.Domain.Security
+@using Syncfusion.Blazor.Charts
+@inject IMultiYearPlanService Mp
+
+<PageTitle>Çok Yıllı Planlama</PageTitle>
+
+<h1>Çok Yıllı Ücret Planlaması</h1>
+<p class="text-muted small">Mevcut maaş tabanını verilen zam/enflasyon varsayımlarıyla yıllara yay.</p>
+
+<div class="card mb-3"><div class="card-body">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-2">
+            <label class="form-label small">Yıl sayısı</label>
+            <input type="number" class="form-control" @bind="_years" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Yıllık zam %</label>
+            <input type="number" step="0.5" class="form-control" @bind="_raise" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Yıllık enflasyon %</label>
+            <input type="number" step="0.5" class="form-control" @bind="_inflation" />
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-primary btn-sm" @onclick="Run">Projeksiyonu Üret</button>
+        </div>
+    </div>
+</div></div>
+
+@if (_plan is not null)
+{
+    <div class="row g-3 mb-3">
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Mevcut Yıllık Bordro</div>
+            <div class="h4 mb-0">@_plan.CurrentAnnualPayroll.ToString("N0") ₺</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Çalışan Sayısı</div>
+            <div class="h4 mb-0">@_plan.Headcount</div>
+        </div></div></div>
+    </div>
+
+    <div class="card mb-3"><div class="card-body">
+        <h2 class="h6">Yıllık Projeksiyon</h2>
+        <SfChart Title="" Height="320">
+            <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.Category" />
+            <ChartPrimaryYAxis Title="₺ (yıllık)" LabelFormat="N0" />
+            <ChartSeriesCollection>
+                <ChartSeries DataSource="@_plan.Years"
+                             XName="@nameof(YearProjection.Year)"
+                             YName="@nameof(YearProjection.AnnualEmployerCost)"
+                             Type="ChartSeriesType.Column"
+                             Name="İşveren Maliyeti" />
+            </ChartSeriesCollection>
+        </SfChart>
+    </div></div>
+
+    <table class="table table-sm">
+        <thead><tr><th>Yıl</th><th class="text-end">Aylık İşveren Mal.</th><th class="text-end">Yıllık İşveren Mal.</th><th class="text-end">Yıllık Bordro</th></tr></thead>
+        <tbody>
+            @foreach (var y in _plan.Years)
+            {
+                <tr>
+                    <td><strong>@y.Year</strong></td>
+                    <td class="text-end">@y.MonthlyEmployerCost.ToString("N0")</td>
+                    <td class="text-end fw-bold">@y.AnnualEmployerCost.ToString("N0")</td>
+                    <td class="text-end">@y.AnnualPayroll.ToString("N0")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private int _years = 5;
+    private decimal _raise = 25m;
+    private decimal _inflation = 30m;
+    private MultiYearPlan? _plan;
+
+    private async Task Run() => _plan = await Mp.ProjectAsync(_years, _raise, _inflation);
+}

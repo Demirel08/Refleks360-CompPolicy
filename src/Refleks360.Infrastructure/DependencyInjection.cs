@@ -70,6 +70,11 @@ public static class DependencyInjection
         services.AddScoped<ITaxAdminService, TaxAdminService>();
         services.AddScoped<IAuditQueryService, AuditQueryService>();
         services.AddScoped<IKvkkService, KvkkService>();
+        services.AddScoped<IApprovalService, ApprovalService>();
+        services.AddScoped<IPayEquityService, PayEquityService>();
+        services.AddScoped<IBenchmarkService, BenchmarkService>();
+        services.AddScoped<ITotalRewardsService, TotalRewardsService>();
+        services.AddScoped<IMultiYearPlanService, MultiYearPlanService>();
 
         // MediatR Infrastructure handler'larını da tara.
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));

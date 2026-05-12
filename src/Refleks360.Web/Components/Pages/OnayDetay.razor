@@ -1,0 +1,133 @@
+@page "/onaylarim/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Approvals
+@using Refleks360.Domain.Approvals
+@using Refleks360.Domain.Security
+@inject IApprovalService Approval
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<PageTitle>Onay Detayı</PageTitle>
+
+@if (_data is null) { <p>Yükleniyor...</p> }
+else
+{
+    <h1 class="mb-1">@_data.Title</h1>
+    <p class="text-muted small mb-3">@_data.EntityType #@_data.EntityId — Talep eden: @_data.RequestedBy (@_data.RequestedAtUtc.ToLocalTime():g)</p>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Durum</div>
+            <div class="h5 mb-0">@StatusText(_data.Status)</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">İlerleme</div>
+            <div class="h5 mb-0">@(_data.CurrentStep + 1) / @_data.TotalSteps</div>
+        </div></div></div>
+        <div class="col-md-6"><div class="card"><div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                @for (int i = 0; i < _data.Steps.Count; i++)
+                {
+                    var s = _data.Steps[i];
+                    var cls = s.IsCompleted ? "bg-success" : (i == _data.CurrentStep ? "bg-warning text-dark" : "bg-light text-dark");
+                    <span class="badge @cls">@(i+1). @s.RoleName @(s.IsCompleted ? "✓" : "")</span>
+                }
+            </div>
+        </div></div></div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_data.Notes))
+    {
+        <div class="alert alert-secondary"><strong>Not:</strong> @_data.Notes</div>
+    }
+
+    @if (_data.Status == ApprovalStatus.Pending && _canAct)
+    {
+        <div class="card mb-3"><div class="card-body">
+            <h2 class="h6">Karar Ver</h2>
+            <textarea class="form-control mb-2" rows="2" placeholder="Açıklama (opsiyonel)" @bind="_comment"></textarea>
+            <div class="d-flex gap-2">
+                <button class="btn btn-success" @onclick="@(() => Decide(ApprovalDecision.Approve))" disabled="@_busy">✓ Onayla</button>
+                <button class="btn btn-danger" @onclick="@(() => Decide(ApprovalDecision.Reject))" disabled="@_busy">✗ Reddet</button>
+                <button class="btn btn-outline-warning" @onclick="@(() => Decide(ApprovalDecision.Return))" disabled="@_busy">↩ Geri Gönder</button>
+            </div>
+            @if (_msg is not null) { <div class="mt-2 small text-info">@_msg</div> }
+        </div></div>
+    }
+
+    <h2 class="h6">Geçmiş</h2>
+    <table class="table table-sm">
+        <thead><tr><th>Tarih</th><th>Adım</th><th>Kullanıcı</th><th>Karar</th><th>Açıklama</th></tr></thead>
+        <tbody>
+            @foreach (var ac in _data.Actions)
+            {
+                <tr>
+                    <td class="small">@ac.ActionAtUtc.ToLocalTime():g</td>
+                    <td>@(ac.StepIndex + 1)</td>
+                    <td>@ac.ActorUserName</td>
+                    <td>@DecisionText(ac.Decision)</td>
+                    <td>@ac.Comment</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <a class="btn btn-outline-secondary btn-sm" href="/onaylarim">← Onay listesi</a>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private ApprovalDetail? _data;
+    private string _comment = "";
+    private bool _busy;
+    private string? _msg;
+    private bool _canAct;
+    private string _myRole = "";
+    private string _userName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _data = await Approval.GetDetailAsync(Id);
+        var state = await AuthState.GetAuthenticationStateAsync();
+        _userName = state.User.Identity?.Name ?? "system";
+        _myRole = state.User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+        if (_data is not null && _data.Status == ApprovalStatus.Pending)
+        {
+            var cur = _data.Steps.FirstOrDefault(s => s.StepIndex == _data.CurrentStep);
+            _canAct = cur is not null && (string.Equals(cur.RoleName, _myRole, StringComparison.OrdinalIgnoreCase) || state.User.IsInRole(Roles.SystemAdmin));
+        }
+    }
+
+    private async Task Decide(ApprovalDecision d)
+    {
+        _busy = true; _msg = null;
+        try
+        {
+            await Approval.ActAsync(Id, d, _userName, _myRole, _comment);
+            _data = await Approval.GetDetailAsync(Id);
+            _comment = "";
+            _msg = "Karar kaydedildi.";
+        }
+        catch (Exception ex) { _msg = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private static string StatusText(ApprovalStatus s) => s switch
+    {
+        ApprovalStatus.Pending => "Bekliyor",
+        ApprovalStatus.Approved => "Onaylandı",
+        ApprovalStatus.Rejected => "Reddedildi",
+        ApprovalStatus.Cancelled => "İptal",
+        _ => s.ToString(),
+    };
+
+    private static string DecisionText(ApprovalDecision d) => d switch
+    {
+        ApprovalDecision.Approve => "✓ Onay",
+        ApprovalDecision.Reject => "✗ Red",
+        ApprovalDecision.Return => "↩ Geri",
+        _ => d.ToString(),
+    };
+}

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Refleks360.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using Refleks360.Infrastructure.Persistence;
 namespace Refleks360.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CompDbContext))]
-    partial class CompDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260512210215_AddApprovals")]
+    partial class AddApprovals
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -435,85 +438,6 @@ namespace Refleks360.Infrastructure.Persistence.Migrations
                     b.ToTable("AuditLogs", (string)null);
                 });
 
-            modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.BenchmarkDataEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("BenchmarkPositionName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<int>("BenchmarkProviderId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CompanySize")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("nvarchar(8)");
-
-                    b.Property<DateOnly>("EffectiveDate")
-                        .HasColumnType("date");
-
-                    b.Property<DateTime>("ImportedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ImportedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("P25")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("P50")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("P75")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Region")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<string>("Sector")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BenchmarkProviderId", "BenchmarkPositionName");
-
-                    b.ToTable("BenchmarkData", (string)null);
-                });
-
-            modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.BenchmarkProviderEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<int>("SourceType")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("BenchmarkProviders", (string)null);
-                });
-
             modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.CompanyEntity", b =>
                 {
                     b.Property<int>("Id")
@@ -566,56 +490,6 @@ namespace Refleks360.Infrastructure.Persistence.Migrations
                             Name = "Refleks Demo A.Ş.",
                             TaxNo = "0000000000"
                         });
-                });
-
-            modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.CompensationLetterEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateOnly>("EffectiveDate")
-                        .HasColumnType("date");
-
-                    b.Property<int>("EmployeeId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("IssuedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("NewGross")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("OldGross")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<byte[]>("PdfBlob")
-                        .HasColumnType("varbinary(max)");
-
-                    b.Property<decimal>("RaisePercent")
-                        .HasColumnType("decimal(8,4)");
-
-                    b.Property<string>("Reason")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("SentToEmployee")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("SignedByUserName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmployeeId");
-
-                    b.ToTable("CompensationLetters", (string)null);
                 });
 
             modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.DepartmentEntity", b =>
@@ -698,39 +572,6 @@ namespace Refleks360.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             Name = "Üretim"
                         });
-                });
-
-            modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.EmployeeBenefitEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BenefitType")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateOnly>("EffectiveDate")
-                        .HasColumnType("date");
-
-                    b.Property<int>("EmployeeId")
-                        .HasColumnType("int");
-
-                    b.Property<DateOnly?>("EndDate")
-                        .HasColumnType("date");
-
-                    b.Property<decimal>("MonthlyValue")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmployeeId", "BenefitType");
-
-                    b.ToTable("EmployeeBenefits", (string)null);
                 });
 
             modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.EmployeeEntity", b =>
@@ -2183,36 +2024,6 @@ namespace Refleks360.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.PositionBenchmarkMappingEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BenchmarkDataId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("MatchType")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PositionId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BenchmarkDataId");
-
-                    b.HasIndex("PositionId", "BenchmarkDataId")
-                        .IsUnique();
-
-                    b.ToTable("PositionBenchmarkMappings", (string)null);
-                });
-
             modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.PositionEntity", b =>
                 {
                     b.Property<int>("Id")
@@ -2667,28 +2478,6 @@ namespace Refleks360.Infrastructure.Persistence.Migrations
                     b.Navigation("Approval");
                 });
 
-            modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.BenchmarkDataEntity", b =>
-                {
-                    b.HasOne("Refleks360.Infrastructure.Persistence.Entities.BenchmarkProviderEntity", "Provider")
-                        .WithMany()
-                        .HasForeignKey("BenchmarkProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Provider");
-                });
-
-            modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.CompensationLetterEntity", b =>
-                {
-                    b.HasOne("Refleks360.Infrastructure.Persistence.Entities.EmployeeEntity", "Employee")
-                        .WithMany()
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Employee");
-                });
-
             modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.DepartmentEntity", b =>
                 {
                     b.HasOne("Refleks360.Infrastructure.Persistence.Entities.CompanyEntity", "Company")
@@ -2712,17 +2501,6 @@ namespace Refleks360.Infrastructure.Persistence.Migrations
                     b.Navigation("ManagerEmployee");
 
                     b.Navigation("ParentDepartment");
-                });
-
-            modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.EmployeeBenefitEntity", b =>
-                {
-                    b.HasOne("Refleks360.Infrastructure.Persistence.Entities.EmployeeEntity", "Employee")
-                        .WithMany()
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Employee");
                 });
 
             modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.EmployeeEntity", b =>
@@ -2801,25 +2579,6 @@ namespace Refleks360.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("TaxYear");
-                });
-
-            modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.PositionBenchmarkMappingEntity", b =>
-                {
-                    b.HasOne("Refleks360.Infrastructure.Persistence.Entities.BenchmarkDataEntity", "BenchmarkData")
-                        .WithMany()
-                        .HasForeignKey("BenchmarkDataId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Refleks360.Infrastructure.Persistence.Entities.PositionEntity", "Position")
-                        .WithMany()
-                        .HasForeignKey("PositionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("BenchmarkData");
-
-                    b.Navigation("Position");
                 });
 
             modelBuilder.Entity("Refleks360.Infrastructure.Persistence.Entities.PositionEntity", b =>

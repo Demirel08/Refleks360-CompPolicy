@@ -1,0 +1,148 @@
+@page "/admin/benchmark"
+@attribute [Authorize(Policy = Permissions.BandView)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Benchmark
+@using Refleks360.Domain.Benchmark
+@using Refleks360.Domain.Security
+@inject IBenchmarkService Bench
+
+<PageTitle>Benchmark / Market Index</PageTitle>
+
+<h1>Benchmark & Market Index</h1>
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><button type="button" class="nav-link @(Tab=="prov"?"active":"")" @onclick='() => Tab="prov"'>Sağlayıcılar</button></li>
+    <li class="nav-item"><button type="button" class="nav-link @(Tab=="data"?"active":"")" @onclick='() => Tab="data"'>Veriler</button></li>
+    <li class="nav-item"><button type="button" class="nav-link @(Tab=="mi"?"active":"")"   @onclick='() => Tab="mi"'>Market Index</button></li>
+</ul>
+
+@if (Tab == "prov")
+{
+    <table class="table table-sm align-middle">
+        <thead><tr><th>Ad</th><th>Kaynak</th><th class="text-end">Veri sayısı</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var p in _providers)
+            {
+                <tr>
+                    <td><strong>@p.Name</strong></td>
+                    <td>@p.SourceType</td>
+                    <td class="text-end">@p.DataPointCount</td>
+                    <td><button class="btn btn-link btn-sm text-danger p-0" @onclick="@(() => DelProv(p.Id))">sil</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div class="card"><div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-4"><input class="form-control" placeholder="Ad" @bind="_provName" /></div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="_provSrc">
+                    @foreach (var t in Enum.GetValues<BenchmarkSourceType>()) { <option value="@t">@t</option> }
+                </select>
+            </div>
+            <div class="col-md-2"><button class="btn btn-primary btn-sm" @onclick="AddProv">Ekle</button></div>
+        </div>
+    </div></div>
+}
+
+@if (Tab == "data")
+{
+    <div class="mb-3">
+        <select class="form-select form-select-sm" style="max-width:280px" @bind="_filterProvider" @bind:after="LoadData">
+            <option value="0">— tüm sağlayıcılar —</option>
+            @foreach (var p in _providers) { <option value="@p.Id">@p.Name</option> }
+        </select>
+    </div>
+    <table class="table table-sm align-middle">
+        <thead><tr><th>Sağlayıcı</th><th>Benchmark pozisyon</th><th>Sektör</th><th>Bölge</th><th class="text-end">P25</th><th class="text-end">P50</th><th class="text-end">P75</th><th>Tarih</th></tr></thead>
+        <tbody>
+            @foreach (var d in _data)
+            {
+                <tr>
+                    <td>@d.ProviderName</td>
+                    <td><strong>@d.BenchmarkPositionName</strong></td>
+                    <td>@d.Sector</td>
+                    <td>@d.Region</td>
+                    <td class="text-end">@d.P25.ToString("N0")</td>
+                    <td class="text-end">@d.P50.ToString("N0")</td>
+                    <td class="text-end">@d.P75.ToString("N0")</td>
+                    <td class="small">@d.EffectiveDate:dd.MM.yyyy</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (Tab == "mi")
+{
+    <p class="text-muted small">Şirketinizin pozisyon medyanı / piyasa P50'sine oranı. 1.0 = piyasa, &gt;1.0 = üstünde, &lt;1.0 = altında.</p>
+    <table class="table table-sm align-middle">
+        <thead><tr><th>Pozisyon</th><th class="text-end">Çalışan</th><th class="text-end">Şirket Medyanı</th><th class="text-end">Piyasa P50</th><th class="text-end">Market Index</th><th>Benchmark</th></tr></thead>
+        <tbody>
+            @foreach (var r in _mi)
+            {
+                <tr>
+                    <td>@r.PositionTitle</td>
+                    <td class="text-end">@r.Headcount</td>
+                    <td class="text-end">@r.CompanyMedian.ToString("N0")</td>
+                    <td class="text-end">@(r.MarketP50?.ToString("N0") ?? "—")</td>
+                    <td class="text-end">
+                        @if (r.MarketIndex.HasValue)
+                        {
+                            <span class="@IndexClass(r.MarketIndex.Value)">@r.MarketIndex.Value.ToString("F2")</span>
+                        }
+                        else { <span class="text-muted">—</span> }
+                    </td>
+                    <td class="small">@r.BenchmarkPosition</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private string Tab { get; set; } = "prov";
+    private IReadOnlyList<BenchmarkProviderDto> _providers = Array.Empty<BenchmarkProviderDto>();
+    private IReadOnlyList<BenchmarkDataDto> _data = Array.Empty<BenchmarkDataDto>();
+    private IReadOnlyList<MarketIndexRow> _mi = Array.Empty<MarketIndexRow>();
+    private string _provName = "";
+    private BenchmarkSourceType _provSrc = BenchmarkSourceType.Mercer;
+    private int _filterProvider;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        _providers = await Bench.GetProvidersAsync();
+        await LoadData();
+        _mi = await Bench.ComputeMarketIndexAsync();
+    }
+
+    private async Task LoadData()
+    {
+        _data = await Bench.GetDataAsync(_filterProvider == 0 ? null : _filterProvider);
+    }
+
+    private async Task AddProv()
+    {
+        if (string.IsNullOrWhiteSpace(_provName)) return;
+        await Bench.UpsertProviderAsync(null, _provName, _provSrc);
+        _provName = "";
+        await Reload();
+    }
+
+    private async Task DelProv(int id)
+    {
+        await Bench.DeleteProviderAsync(id);
+        await Reload();
+    }
+
+    private static string IndexClass(decimal v) =>
+        v < 0.90m ? "badge bg-danger" :
+        v > 1.10m ? "badge bg-warning text-dark" :
+        "badge bg-success";
+}

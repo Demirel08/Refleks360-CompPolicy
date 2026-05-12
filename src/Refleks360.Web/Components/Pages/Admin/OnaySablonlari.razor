@@ -1,0 +1,115 @@
+@page "/admin/onay-sablonlari"
+@attribute [Authorize(Policy = Permissions.Settings)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Approvals
+@using Refleks360.Domain.Approvals
+@using Refleks360.Domain.Security
+@inject IApprovalService Approval
+
+<PageTitle>Onay Şablonları</PageTitle>
+
+<h1>Onay Şablonları</h1>
+<p class="text-muted small">Senaryo ve diğer iş akışları için onay zincirlerini buradan tanımla.</p>
+
+@if (_list is null) { <p>Yükleniyor...</p> }
+else
+{
+    <table class="table table-sm align-middle">
+        <thead><tr><th>Ad</th><th>Tetikleyici</th><th class="text-end">Eşik (TL)</th><th>Adımlar (rol sırası)</th><th>Aktif</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var t in _list)
+            {
+                <tr>
+                    <td><strong>@t.Name</strong></td>
+                    <td>@t.TriggerType</td>
+                    <td class="text-end">@(t.AmountThreshold?.ToString("N0") ?? "—")</td>
+                    <td>@string.Join(" → ", t.StepRoles)</td>
+                    <td>@(t.IsActive ? "✓" : "—")</td>
+                    <td>
+                        <button class="btn btn-link btn-sm p-0" @onclick="@(() => StartEdit(t))">düzenle</button>
+                        <button class="btn btn-link btn-sm p-0 text-danger ms-2" @onclick="@(() => Delete(t.Id!.Value))">sil</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<div class="card mb-3"><div class="card-body">
+    <h2 class="h6">@(_form.Id is null ? "Yeni Şablon" : "Düzenle: " + _form.Name)</h2>
+    <div class="row g-2">
+        <div class="col-md-4"><input class="form-control" placeholder="Ad" @bind="_form.Name" /></div>
+        <div class="col-md-3">
+            <select class="form-select" @bind="_form.TriggerType">
+                <option value="@ApprovalTriggerType.Scenario">Senaryo</option>
+                <option value="@ApprovalTriggerType.IndividualRaise">Bireysel zam</option>
+                <option value="@ApprovalTriggerType.NewHire">Yeni işe alım</option>
+                <option value="@ApprovalTriggerType.OffCycle">Off-cycle</option>
+            </select>
+        </div>
+        <div class="col-md-3"><input type="number" class="form-control" placeholder="Eşik tutar (TL)" @bind="_form.AmountThreshold" /></div>
+        <div class="col-md-2 form-check pt-2">
+            <input type="checkbox" id="actv" class="form-check-input" @bind="_form.IsActive" />
+            <label class="form-check-label small" for="actv">Aktif</label>
+        </div>
+    </div>
+    <div class="mt-2">
+        <label class="form-label small">Adımlar (rol sırası — virgülle ayır)</label>
+        <input class="form-control form-control-sm" @bind="_stepsRaw" placeholder="Örn: HRManager, HRDirector, CFO" />
+        <small class="text-muted">Mevcut roller: SystemAdmin, HRDirector, HRManager, HRSpecialist, DepartmentManager, CFO, CEO, Auditor</small>
+    </div>
+    <div class="mt-2 d-flex gap-2">
+        <button class="btn btn-primary btn-sm" @onclick="Save">Kaydet</button>
+        @if (_form.Id is not null) { <button class="btn btn-secondary btn-sm" @onclick="Reset">Vazgeç</button> }
+        @if (_msg is not null) { <span class="text-info align-self-center">@_msg</span> }
+    </div>
+</div></div>
+
+@code {
+    private IReadOnlyList<ApprovalTemplateInput>? _list;
+    private ApprovalTemplateInput _form = new() { IsActive = true };
+    private string _stepsRaw = "";
+    private string? _msg;
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        _list = await Approval.GetTemplatesAsync();
+    }
+
+    private void StartEdit(ApprovalTemplateInput t)
+    {
+        _form = new ApprovalTemplateInput
+        {
+            Id = t.Id, Name = t.Name, TriggerType = t.TriggerType,
+            AmountThreshold = t.AmountThreshold, IsActive = t.IsActive,
+            StepRoles = t.StepRoles.ToList(),
+        };
+        _stepsRaw = string.Join(", ", t.StepRoles);
+    }
+
+    private async Task Save()
+    {
+        _form.StepRoles = _stepsRaw.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
+        if (_form.StepRoles.Count == 0) { _msg = "En az 1 rol gerekli."; return; }
+        await Approval.UpsertTemplateAsync(_form);
+        Reset();
+        await Reload();
+        _msg = "Kaydedildi.";
+    }
+
+    private void Reset()
+    {
+        _form = new ApprovalTemplateInput { IsActive = true };
+        _stepsRaw = "";
+        _msg = null;
+    }
+
+    private async Task Delete(int id)
+    {
+        await Approval.DeleteTemplateAsync(id);
+        await Reload();
+    }
+}

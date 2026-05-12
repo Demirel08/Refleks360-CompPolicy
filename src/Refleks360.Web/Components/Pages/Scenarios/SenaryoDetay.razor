@@ -7,9 +7,11 @@
 @using Refleks360.Domain.Security
 @inject IScenarioService Scenarios
 @inject IReportingService Reports
+@inject IApprovalService Approval
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@using Refleks360.Domain.Approvals
 
 <PageTitle>Senaryo Detayı</PageTitle>
 
@@ -32,6 +34,7 @@ else
             </AuthorizeView>
             @if (_data.Status == ScenarioStatus.Calculated)
             {
+                <button class="btn btn-outline-warning btn-sm" @onclick="RequestApproval">📨 Onay İste</button>
                 <AuthorizeView Policy="@Permissions.ScenarioApply">
                     <button class="btn btn-success btn-sm" @onclick="Apply">Senaryoyu Uygula</button>
                 </AuthorizeView>
@@ -131,5 +134,24 @@ else
             await JS.InvokeVoidAsync("downloadFromBytes", $"senaryo-{Id}-{DateTime.Today:yyyyMMdd}.pdf", Convert.ToBase64String(bytes));
         }
         catch (Exception ex) { _msg = "PDF hatası: " + ex.Message; }
+    }
+
+    private async Task RequestApproval()
+    {
+        if (_data is null) return;
+        try
+        {
+            var state = await AuthState.GetAuthenticationStateAsync();
+            var user = state.User.Identity?.Name ?? "system";
+            var amount = _data.Employees.Sum(e => e.NewEmployerCost - e.OldEmployerCost) * 12m;
+            var aid = await Approval.RequestApprovalAsync(
+                "Scenario", Id.ToString(),
+                $"Senaryo onayı: {_data.Name}",
+                ApprovalTriggerType.Scenario,
+                amount, user,
+                $"Senaryoyu uygulamak için onay talep ediliyor. Yıllık işveren maliyeti farkı: {amount:N0} ₺");
+            _msg = $"Onay süreci başlatıldı (#{aid}). Onaylarım sayfasından takip edilebilir.";
+        }
+        catch (Exception ex) { _msg = "Hata: " + ex.Message; }
     }
 }

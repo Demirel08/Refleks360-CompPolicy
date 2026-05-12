@@ -1,0 +1,136 @@
+@page "/calisanlar/{Id:int}/total-rewards"
+@attribute [Authorize(Policy = Permissions.EmployeeViewSalary)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.TotalRewards
+@using Refleks360.Domain.Organization
+@using Refleks360.Domain.Security
+@inject ITotalRewardsService TR
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Total Rewards</PageTitle>
+
+@if (_data is null) { <p>Yükleniyor...</p> }
+else
+{
+    <h1 class="mb-1">Total Rewards — @_data.FullName</h1>
+    <p class="text-muted small"><a href="/calisanlar/@Id">← Çalışan detayı</a></p>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Aylık Brüt</div>
+            <div class="h4 mb-0">@_data.MonthlyGross.ToString("N0") ₺</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Aylık Yan Hak</div>
+            <div class="h4 mb-0">@_data.MonthlyBenefitsTotal.ToString("N0") ₺</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Yıllık İşveren Mal.</div>
+            <div class="h4 mb-0">@_data.AnnualEmployerCost.ToString("N0") ₺</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Yıllık Total Comp</div>
+            <div class="h4 mb-0 text-success">@_data.AnnualTotalCompensation.ToString("N0") ₺</div>
+        </div></div></div>
+    </div>
+
+    <h2 class="h6">Yan Haklar</h2>
+    @if (_data.Benefits.Count == 0)
+    {
+        <p class="text-muted">Yan hak tanımlı değil.</p>
+    }
+    else
+    {
+        <table class="table table-sm align-middle">
+            <thead><tr><th>Tür</th><th class="text-end">Aylık Değer</th><th>Açıklama</th><th>Geçerli</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var b in _data.Benefits)
+                {
+                    <tr>
+                        <td>@b.BenefitType</td>
+                        <td class="text-end">@b.MonthlyValue.ToString("N0") ₺</td>
+                        <td>@b.Description</td>
+                        <td class="small">@b.EffectiveDate:dd.MM.yyyy — @(b.EndDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                        <td><button class="btn btn-link btn-sm text-danger p-0" @onclick="@(() => Delete(b.Id))">sil</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <AuthorizeView Policy="@Permissions.EmployeeEdit" Context="ed">
+        <div class="card mt-3"><div class="card-body">
+            <h2 class="h6">Yeni Yan Hak Ekle</h2>
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <select class="form-select" @bind="_newType">
+                        @foreach (var t in Enum.GetValues<BenefitType>()) { <option value="@t">@t</option> }
+                    </select>
+                </div>
+                <div class="col-md-3"><input type="number" class="form-control" placeholder="Aylık değer" @bind="_newValue" /></div>
+                <div class="col-md-3"><input class="form-control" placeholder="Açıklama" @bind="_newDescription" /></div>
+                <div class="col-md-2"><input type="date" class="form-control" @bind="_newEffective" /></div>
+                <div class="col-md-1">
+                    <button class="btn btn-primary btn-sm" @onclick="AddBenefit">Ekle</button>
+                </div>
+            </div>
+        </div></div>
+
+        <div class="card mt-3"><div class="card-body">
+            <h2 class="h6">Ücret Bildirim Mektubu Üret</h2>
+            <div class="row g-2">
+                <div class="col-md-3"><input type="number" class="form-control" placeholder="Eski brüt" @bind="_letterOld" /></div>
+                <div class="col-md-3"><input type="number" class="form-control" placeholder="Yeni brüt" @bind="_letterNew" /></div>
+                <div class="col-md-2"><input type="date" class="form-control" @bind="_letterDate" /></div>
+                <div class="col-md-3"><input class="form-control" placeholder="Gerekçe" @bind="_letterReason" /></div>
+                <div class="col-md-1"><button class="btn btn-outline-primary btn-sm" @onclick="GenerateLetter">📄 PDF</button></div>
+            </div>
+        </div></div>
+    </AuthorizeView>
+
+    @if (_msg is not null) { <div class="alert alert-info mt-3">@_msg</div> }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private TotalRewardsSummary? _data;
+    private BenefitType _newType = BenefitType.HealthInsurance;
+    private decimal _newValue;
+    private string? _newDescription;
+    private DateTime _newEffective = DateTime.Today;
+    private decimal _letterOld;
+    private decimal _letterNew;
+    private DateTime _letterDate = DateTime.Today.AddMonths(1);
+    private string _letterReason = "Yıllık merit zammı";
+    private string? _msg;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _data = await TR.GetForEmployeeAsync(Id);
+        if (_data is not null) _letterOld = _data.MonthlyGross;
+    }
+
+    private async Task AddBenefit()
+    {
+        await TR.AddBenefitAsync(Id, _newType, _newValue, _newDescription, DateOnly.FromDateTime(_newEffective), null);
+        _data = await TR.GetForEmployeeAsync(Id);
+        _newValue = 0; _newDescription = null;
+    }
+
+    private async Task Delete(int benefitId)
+    {
+        await TR.DeleteBenefitAsync(benefitId);
+        _data = await TR.GetForEmployeeAsync(Id);
+    }
+
+    private async Task GenerateLetter()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var user = state.User.Identity?.Name ?? "system";
+        var bytes = await TR.GenerateCompLetterPdfAsync(Id, _letterOld, _letterNew, DateOnly.FromDateTime(_letterDate), _letterReason, user);
+        await JS.InvokeVoidAsync("downloadFromBytes", $"ucret-mektubu-{Id}-{DateTime.Today:yyyyMMdd}.pdf", Convert.ToBase64String(bytes));
+        _msg = "Mektup üretildi ve indirildi.";
+    }
+}

@@ -494,26 +494,38 @@ Refleks360.CompPolicy.sln
 
 ---
 
-## Faz 2 — Kurumsallaşma (Aylık Hedefler)
+## Faz 2 — Kurumsallaşma ✅
 
-### Ay 6 (Ekim 2026) — Onay Akışı (Workflow)
-- Onay şablon yapılandırma, threshold, e-posta bildirimi, mobil uyumlu onay görünümü
+### Ay 6 — Onay Akışı (Workflow) ✅
+- [x] `ApprovalTemplate`/`Approval`/`ApprovalStep`/`ApprovalAction` entity'leri (`AddApprovals` migration)
+- [x] `ApprovalService`: rol bazlı inbox + Approve/Reject/Return akışı + threshold + step ilerleme
+- [x] `/admin/onay-sablonlari` (CRUD), `/onaylarim` (inbox + tüm), `/onaylarim/{id}` (karar verme)
+- [x] SenaryoDetay'a "Onay İste" butonu (otomatik şablon eşleştirme)
 
-### Ay 7 (Kasım 2026) — Pay Equity + Merit Matrix
-- Cinsiyet pay gap (regression), compression analizi, merit matrix UI, kalibrasyon
+### Ay 7 — Pay Equity ✅
+- [x] `PayEquityService`: ham + kademe-ağırlıklı düzeltilmiş gap, kademe & departman kırılım
+- [x] `/admin/pay-equity` 4 KPI + 2 kırılım tablosu
 
-### Ay 8 (Aralık 2026) — Benchmark / Market Index
-- Benchmark provider, manuel + Excel import (Mercer/WTW), market index dashboard, aging
+### Ay 8 — Benchmark / Market Index ✅
+- [x] `BenchmarkProvider` + `BenchmarkData` + `PositionBenchmarkMapping`
+- [x] `BenchmarkService`: provider/veri CRUD, Excel import, market index hesabı
+- [x] `/admin/benchmark` 3 sekmeli sayfa
 
-### Ay 9 (Ocak 2027) — Total Rewards + Comp Letter
-- Yan haklar yönetimi, total rewards bildirim, ücret bildirim mektubu PDF, toplu üretim
+### Ay 9 — Total Rewards + Comp Letter ✅
+- [x] `EmployeeBenefit` + `CompensationLetter`
+- [x] `TotalRewardsService`: yan hak CRUD + total comp + comp letter PDF (DB'ye blob)
+- [x] `/calisanlar/{id}/total-rewards` 4 KPI + yan hak listesi + comp letter üretici
 
-### Ay 10 (Şubat 2027) — Çok Yıllı Planlama + İleri Dashboard
-- 3-5 yıl ücret planı, enflasyon varsayımı, market index by department heat map
+### Ay 10 — Çok Yıllı Planlama + Heat Map ✅
+- [x] `MultiYearPlanService`: N yıllık projeksiyon + dept × kademe heat map
+- [x] `/admin/multi-year` (Syncfusion chart + tablo)
+- [x] `/admin/heatmap` (dept × kademe matrisi, hücre rengi compa-ratio'ya göre)
 
-### Ay 11 (Mart 2027) — Faz 2 Polish + Pilot Müşteri Geri Bildirim Döngüsü
-- İlk pilot müşteriden geri bildirim → fix
-- **Faz 2 yayın v2.0.0**
+### Ay 11 — Polish + v2.0.0 ✅
+- [x] NavMenu güncellendi, izinlerle korumalı
+- [x] 2 yeni migration uygulandı (AddApprovals + AddBenchmarkAndBenefitsAndCompLetters)
+- [x] Build temiz, tüm testler yeşil
+- [x] **Faz 2 yayın v2.0.0** — git tag
 
 ---
 

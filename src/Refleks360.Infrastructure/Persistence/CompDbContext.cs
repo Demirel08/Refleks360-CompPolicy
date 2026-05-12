@@ -29,6 +29,15 @@ public sealed class CompDbContext(DbContextOptions<CompDbContext> options)
     public DbSet<EmployeeSalaryEntity> EmployeeSalaries => Set<EmployeeSalaryEntity>();
     public DbSet<ScenarioEntity> Scenarios => Set<ScenarioEntity>();
     public DbSet<ScenarioEmployeeEntity> ScenarioEmployees => Set<ScenarioEmployeeEntity>();
+    public DbSet<ApprovalTemplateEntity> ApprovalTemplates => Set<ApprovalTemplateEntity>();
+    public DbSet<ApprovalEntity> Approvals => Set<ApprovalEntity>();
+    public DbSet<ApprovalStepEntity> ApprovalSteps => Set<ApprovalStepEntity>();
+    public DbSet<ApprovalActionEntity> ApprovalActions => Set<ApprovalActionEntity>();
+    public DbSet<BenchmarkProviderEntity> BenchmarkProviders => Set<BenchmarkProviderEntity>();
+    public DbSet<BenchmarkDataEntity> BenchmarkData => Set<BenchmarkDataEntity>();
+    public DbSet<PositionBenchmarkMappingEntity> PositionBenchmarkMappings => Set<PositionBenchmarkMappingEntity>();
+    public DbSet<EmployeeBenefitEntity> EmployeeBenefits => Set<EmployeeBenefitEntity>();
+    public DbSet<CompensationLetterEntity> CompensationLetters => Set<CompensationLetterEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -277,6 +286,97 @@ public sealed class CompDbContext(DbContextOptions<CompDbContext> options)
             b.HasOne(e => e.Scenario).WithMany(s => s.Employees).HasForeignKey(e => e.ScenarioId).OnDelete(DeleteBehavior.Cascade);
             b.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Restrict);
             b.HasIndex(e => new { e.ScenarioId, e.EmployeeId }).IsUnique();
+        });
+
+        modelBuilder.Entity<ApprovalTemplateEntity>(b =>
+        {
+            b.ToTable("ApprovalTemplates");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.Name).HasMaxLength(256).IsRequired();
+            b.Property(e => e.StepsJson).HasColumnType("nvarchar(max)");
+            b.Property(e => e.AmountThreshold).HasColumnType("decimal(18,2)");
+        });
+
+        modelBuilder.Entity<ApprovalEntity>(b =>
+        {
+            b.ToTable("Approvals");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.EntityType).HasMaxLength(64).IsRequired();
+            b.Property(e => e.EntityId).HasMaxLength(64).IsRequired();
+            b.Property(e => e.Title).HasMaxLength(256).IsRequired();
+            b.Property(e => e.RequestedBy).HasMaxLength(256).IsRequired();
+            b.HasOne(e => e.Template).WithMany().HasForeignKey(e => e.TemplateId).OnDelete(DeleteBehavior.SetNull);
+            b.HasIndex(e => new { e.EntityType, e.EntityId });
+            b.HasIndex(e => e.Status);
+        });
+
+        modelBuilder.Entity<ApprovalStepEntity>(b =>
+        {
+            b.ToTable("ApprovalSteps");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.RoleName).HasMaxLength(64).IsRequired();
+            b.Property(e => e.AssignedUserId).HasMaxLength(450);
+            b.HasOne(e => e.Approval).WithMany(a => a.Steps).HasForeignKey(e => e.ApprovalId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ApprovalActionEntity>(b =>
+        {
+            b.ToTable("ApprovalActions");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.ActorUserName).HasMaxLength(256).IsRequired();
+            b.HasOne(e => e.Approval).WithMany(a => a.Actions).HasForeignKey(e => e.ApprovalId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BenchmarkProviderEntity>(b =>
+        {
+            b.ToTable("BenchmarkProviders");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.Name).HasMaxLength(256).IsRequired();
+        });
+
+        modelBuilder.Entity<BenchmarkDataEntity>(b =>
+        {
+            b.ToTable("BenchmarkData");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.BenchmarkPositionName).HasMaxLength(256).IsRequired();
+            b.Property(e => e.Sector).HasMaxLength(128);
+            b.Property(e => e.Region).HasMaxLength(64);
+            b.Property(e => e.CompanySize).HasMaxLength(32);
+            b.Property(e => e.Currency).HasMaxLength(8).IsRequired();
+            b.Property(e => e.P25).HasColumnType("decimal(18,2)");
+            b.Property(e => e.P50).HasColumnType("decimal(18,2)");
+            b.Property(e => e.P75).HasColumnType("decimal(18,2)");
+            b.HasOne(e => e.Provider).WithMany().HasForeignKey(e => e.BenchmarkProviderId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(e => new { e.BenchmarkProviderId, e.BenchmarkPositionName });
+        });
+
+        modelBuilder.Entity<PositionBenchmarkMappingEntity>(b =>
+        {
+            b.ToTable("PositionBenchmarkMappings");
+            b.HasKey(e => e.Id);
+            b.HasOne(e => e.Position).WithMany().HasForeignKey(e => e.PositionId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(e => e.BenchmarkData).WithMany().HasForeignKey(e => e.BenchmarkDataId).OnDelete(DeleteBehavior.Restrict);
+            b.HasIndex(e => new { e.PositionId, e.BenchmarkDataId }).IsUnique();
+        });
+
+        modelBuilder.Entity<EmployeeBenefitEntity>(b =>
+        {
+            b.ToTable("EmployeeBenefits");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.MonthlyValue).HasColumnType("decimal(18,2)");
+            b.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(e => new { e.EmployeeId, e.BenefitType });
+        });
+
+        modelBuilder.Entity<CompensationLetterEntity>(b =>
+        {
+            b.ToTable("CompensationLetters");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.OldGross).HasColumnType("decimal(18,2)");
+            b.Property(e => e.NewGross).HasColumnType("decimal(18,2)");
+            b.Property(e => e.RaisePercent).HasColumnType("decimal(8,4)");
+            b.Property(e => e.SignedByUserName).HasMaxLength(256).IsRequired();
+            b.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

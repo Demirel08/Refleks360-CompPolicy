@@ -1,0 +1,87 @@
+@page "/onaylarim"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Approvals
+@using Refleks360.Domain.Approvals
+@using Refleks360.Domain.Security
+@inject IApprovalService Approval
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<PageTitle>Onaylarım</PageTitle>
+
+<h1>Onaylarım</h1>
+<p class="text-muted small">Sana atanmış (rolüne göre) bekleyen onaylar.</p>
+
+@if (_inbox is null) { <p>Yükleniyor...</p> }
+else if (_inbox.Count == 0)
+{
+    <div class="alert alert-info">Bekleyen onay yok.</div>
+}
+else
+{
+    <table class="table table-sm align-middle">
+        <thead><tr><th>Başlık</th><th>Tip</th><th>Adım</th><th>Talep eden</th><th>Tarih</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var a in _inbox)
+            {
+                <tr>
+                    <td><a href="/onaylarim/@a.Id"><strong>@a.Title</strong></a></td>
+                    <td>@a.EntityType</td>
+                    <td>@(a.CurrentStep + 1) / @a.TotalSteps (@a.CurrentApproverRole)</td>
+                    <td>@a.RequestedBy</td>
+                    <td class="small">@a.RequestedAtUtc.ToLocalTime().ToString("g")</td>
+                    <td><a class="btn btn-link btn-sm p-0" href="/onaylarim/@a.Id">aç →</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2 class="h6 mt-4">Tüm Onaylar</h2>
+@if (_all is null) { }
+else
+{
+    <table class="table table-sm align-middle">
+        <thead><tr><th>Başlık</th><th>Durum</th><th>Adım</th><th>Talep eden</th><th>Tarih</th></tr></thead>
+        <tbody>
+            @foreach (var a in _all)
+            {
+                <tr>
+                    <td><a href="/onaylarim/@a.Id">@a.Title</a></td>
+                    <td>@StatusBadge(a.Status)</td>
+                    <td>@(a.CurrentStep + 1) / @a.TotalSteps (@a.CurrentApproverRole)</td>
+                    <td>@a.RequestedBy</td>
+                    <td class="small">@a.RequestedAtUtc.ToLocalTime().ToString("g")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<ApprovalListItem>? _inbox;
+    private IReadOnlyList<ApprovalListItem>? _all;
+    private string _myRole = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        // Kullanıcının en yüksek yetkili rolünü seç
+        var myRoles = state.User.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
+        _myRole = myRoles.FirstOrDefault() ?? "";
+        if (!string.IsNullOrEmpty(_myRole))
+            _inbox = await Approval.GetInboxAsync(_myRole);
+        _all = await Approval.GetAllAsync();
+    }
+
+    private static MarkupString StatusBadge(ApprovalStatus s) => s switch
+    {
+        ApprovalStatus.Pending => new MarkupString("<span class='badge bg-warning text-dark'>Bekliyor</span>"),
+        ApprovalStatus.Approved => new MarkupString("<span class='badge bg-success'>Onaylandı</span>"),
+        ApprovalStatus.Rejected => new MarkupString("<span class='badge bg-danger'>Reddedildi</span>"),
+        ApprovalStatus.Cancelled => new MarkupString("<span class='badge bg-light text-dark'>İptal</span>"),
+        _ => new MarkupString(s.ToString()),
+    };
+}
