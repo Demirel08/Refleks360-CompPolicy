@@ -1,0 +1,227 @@
+@page "/admin/kullanicilar"
+@attribute [Authorize(Policy = Permissions.UserManage)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Users
+@using Refleks360.Domain.Security
+@inject IUserAdminService Users
+@inject IJSRuntime JS
+
+<PageTitle>Kullanıcı Yönetimi</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h1 class="mb-1">Kullanıcılar</h1>
+        <p class="text-muted small mb-0">Sistem kullanıcılarını, rollerini ve aktiflik durumunu yönet.</p>
+    </div>
+    <button class="btn btn-primary btn-sm" @onclick="StartCreate">+ Yeni Kullanıcı</button>
+</div>
+
+@if (_createOpen)
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <h2 class="h6">Yeni Kullanıcı</h2>
+            <div class="row g-2">
+                <div class="col-md-3"><input class="form-control" placeholder="Kullanıcı adı" @bind="_newUserName" /></div>
+                <div class="col-md-3"><input class="form-control" placeholder="E-posta" @bind="_newEmail" /></div>
+                <div class="col-md-3"><input class="form-control" placeholder="Tam ad" @bind="_newFullName" /></div>
+                <div class="col-md-3"><input class="form-control" placeholder="Geçici şifre" type="password" @bind="_newPassword" /></div>
+            </div>
+            <div class="mt-2 d-flex flex-wrap gap-3">
+                @foreach (var role in Roles.All)
+                {
+                    <div class="form-check">
+                        <input id="@($"newrole-{role}")" type="checkbox" class="form-check-input"
+                               checked="@_newRoles.Contains(role)"
+                               @onchange="@((ChangeEventArgs e) => ToggleNewRole(role, (bool)e.Value!))" />
+                        <label class="form-check-label" for="@($"newrole-{role}")">@role</label>
+                    </div>
+                }
+            </div>
+            <div class="mt-2 d-flex gap-2">
+                <button class="btn btn-primary btn-sm" @onclick="HandleCreate" disabled="@_busy">Oluştur</button>
+                <button class="btn btn-secondary btn-sm" @onclick="@(() => _createOpen = false)">İptal</button>
+                @if (_createError is not null) { <span class="text-danger small align-self-center">@_createError</span> }
+            </div>
+        </div>
+    </div>
+}
+
+@if (_users is null)
+{
+    <p><em>Yükleniyor...</em></p>
+}
+else
+{
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>Kullanıcı</th>
+                <th>E-posta</th>
+                <th>Tam Ad</th>
+                <th>Roller</th>
+                <th>Son Giriş</th>
+                <th>Aktif</th>
+                <th>İşlem</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var u in _users)
+            {
+                <tr>
+                    <td><code>@u.UserName</code></td>
+                    <td>@u.Email</td>
+                    <td>@u.FullName</td>
+                    <td>
+                        @if (_editingRolesFor == u.Id)
+                        {
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var role in Roles.All)
+                                {
+                                    <div class="form-check form-check-inline">
+                                        <input id="@($"role-{u.Id}-{role}")" type="checkbox" class="form-check-input"
+                                               checked="@_editingRoles.Contains(role)"
+                                               @onchange="@((ChangeEventArgs e) => ToggleEditRole(role, (bool)e.Value!))" />
+                                        <label class="form-check-label small" for="@($"role-{u.Id}-{role}")">@role</label>
+                                    </div>
+                                }
+                                <button class="btn btn-primary btn-sm" @onclick="@(() => SaveRoles(u.Id))" disabled="@_busy">Kaydet</button>
+                                <button class="btn btn-secondary btn-sm" @onclick="@(() => _editingRolesFor = null)">İptal</button>
+                            </div>
+                        }
+                        else
+                        {
+                            @if (u.Roles.Count == 0)
+                            {
+                                <span class="text-muted small">(yok)</span>
+                            }
+                            else
+                            {
+                                @foreach (var r in u.Roles)
+                                {
+                                    <span class="badge bg-info text-dark me-1">@r</span>
+                                }
+                            }
+                            <button class="btn btn-link btn-sm p-0 ms-2" @onclick="@(() => StartEditRoles(u))">değiştir</button>
+                        }
+                    </td>
+                    <td class="small">@(u.LastLoginAt?.LocalDateTime.ToString("g") ?? "—")</td>
+                    <td>
+                        @if (u.IsActive) { <span class="badge bg-success">Aktif</span> }
+                        else { <span class="badge bg-secondary">Pasif</span> }
+                    </td>
+                    <td>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => ToggleActive(u))" disabled="@_busy">
+                            @(u.IsActive ? "Pasifleştir" : "Aktifleştir")
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" @onclick="@(() => ResetPassword(u))" disabled="@_busy">Şifre Sıfırla</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<UserListItem>? _users;
+    private bool _busy;
+    private string? _createError;
+
+    private bool _createOpen;
+    private string _newUserName = "";
+    private string _newEmail = "";
+    private string _newFullName = "";
+    private string _newPassword = "";
+    private HashSet<string> _newRoles = new();
+
+    private string? _editingRolesFor;
+    private HashSet<string> _editingRoles = new();
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        _users = await Users.GetAllAsync();
+    }
+
+    private void StartCreate()
+    {
+        _createOpen = true;
+        _newUserName = ""; _newEmail = ""; _newFullName = ""; _newPassword = "";
+        _newRoles = new HashSet<string>();
+        _createError = null;
+    }
+
+    private void ToggleNewRole(string role, bool isChecked)
+    {
+        if (isChecked) _newRoles.Add(role); else _newRoles.Remove(role);
+    }
+
+    private async Task HandleCreate()
+    {
+        _busy = true;
+        _createError = null;
+        try
+        {
+            var (ok, err, _) = await Users.CreateAsync(_newUserName, _newEmail, _newFullName, _newPassword, _newRoles.ToArray());
+            if (ok)
+            {
+                _createOpen = false;
+                await Reload();
+            }
+            else
+            {
+                _createError = err;
+            }
+        }
+        finally { _busy = false; }
+    }
+
+    private void StartEditRoles(UserListItem u)
+    {
+        _editingRolesFor = u.Id;
+        _editingRoles = new HashSet<string>(u.Roles);
+    }
+
+    private void ToggleEditRole(string role, bool isChecked)
+    {
+        if (isChecked) _editingRoles.Add(role); else _editingRoles.Remove(role);
+    }
+
+    private async Task SaveRoles(string userId)
+    {
+        _busy = true;
+        try
+        {
+            await Users.SetRolesAsync(userId, _editingRoles.ToArray());
+            _editingRolesFor = null;
+            await Reload();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task ToggleActive(UserListItem u)
+    {
+        _busy = true;
+        try
+        {
+            await Users.SetActiveAsync(u.Id, !u.IsActive);
+            await Reload();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task ResetPassword(UserListItem u)
+    {
+        var newPwd = await JS.InvokeAsync<string?>("prompt", $"{u.UserName} için yeni şifre:");
+        if (string.IsNullOrWhiteSpace(newPwd)) return;
+        _busy = true;
+        try
+        {
+            await Users.ResetPasswordAsync(u.Id, newPwd);
+            await JS.InvokeVoidAsync("alert", "Şifre sıfırlandı.");
+        }
+        finally { _busy = false; }
+    }
+}

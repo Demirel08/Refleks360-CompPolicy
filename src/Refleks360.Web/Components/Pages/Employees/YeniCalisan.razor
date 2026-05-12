@@ -1,0 +1,172 @@
+@page "/calisanlar/yeni"
+@attribute [Authorize(Policy = Permissions.EmployeeEdit)]
+@rendermode InteractiveServer
+@using MediatR
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Employees.Commands
+@using Refleks360.Domain.Organization
+@using Refleks360.Domain.Security
+@inject IMediator Mediator
+@inject IOrganizationLookupService Lookup
+@inject NavigationManager Nav
+
+<PageTitle>Yeni Çalışan</PageTitle>
+
+<h1>Yeni Çalışan</h1>
+
+<EditForm Model="_form" OnValidSubmit="HandleSave">
+    <DataAnnotationsValidator />
+
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label">Sicil No</label>
+            <input class="form-control" @bind="_form.EmployeeNumber" required />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Ad</label>
+            <input class="form-control" @bind="_form.FirstName" required />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Soyad</label>
+            <input class="form-control" @bind="_form.LastName" required />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">E-posta</label>
+            <input class="form-control" @bind="_form.Email" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Telefon</label>
+            <input class="form-control" @bind="_form.Phone" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Cinsiyet</label>
+            <select class="form-select" @bind="_form.Gender">
+                <option value="@Gender.NotSpecified">Belirtilmemiş</option>
+                <option value="@Gender.Male">Erkek</option>
+                <option value="@Gender.Female">Kadın</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Pozisyon</label>
+            <select class="form-select" @bind="_form.PositionId" required>
+                <option value="0">— seç —</option>
+                @foreach (var p in _positions) { <option value="@p.Id">@p.Name</option> }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Departman</label>
+            <select class="form-select" @bind="_form.DepartmentId" required>
+                <option value="0">— seç —</option>
+                @foreach (var d in _departments) { <option value="@d.Id">@d.Name</option> }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Lokasyon</label>
+            <select class="form-select" @bind="_form.LocationId" required>
+                <option value="0">— seç —</option>
+                @foreach (var l in _locations) { <option value="@l.Id">@l.Name</option> }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Yönetici</label>
+            <select class="form-select" @bind="_form.ManagerId">
+                <option value="">— yok —</option>
+                @foreach (var m in _managers) { <option value="@m.Id">@m.Name</option> }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Sözleşme Tipi</label>
+            <select class="form-select" @bind="_form.EmploymentType">
+                <option value="@EmploymentType.Permanent">Süresiz</option>
+                <option value="@EmploymentType.FixedTerm">Belirli süreli</option>
+                <option value="@EmploymentType.Intern">Stajyer</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Çalışma</label>
+            <select class="form-select" @bind="_form.WorkSchedule">
+                <option value="@WorkSchedule.FullTime">Tam zamanlı</option>
+                <option value="@WorkSchedule.PartTime">Yarı zamanlı</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">İşe Giriş</label>
+            <input type="date" class="form-control" @bind="_form.HireDate" required />
+        </div>
+        <div class="col-md-12">
+            <label class="form-label">Notlar</label>
+            <textarea class="form-control" rows="3" @bind="_form.Notes"></textarea>
+        </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@_saving">Kaydet</button>
+        <a class="btn btn-outline-secondary" href="/calisanlar">İptal</a>
+        @if (_errorMessage is not null)
+        {
+            <span class="text-danger align-self-center">@_errorMessage</span>
+        }
+    </div>
+</EditForm>
+
+@code {
+    private FormModel _form = new() { HireDate = DateTime.Today };
+    private IReadOnlyList<LookupItem> _positions = Array.Empty<LookupItem>();
+    private IReadOnlyList<LookupItem> _departments = Array.Empty<LookupItem>();
+    private IReadOnlyList<LookupItem> _locations = Array.Empty<LookupItem>();
+    private IReadOnlyList<LookupItem> _managers = Array.Empty<LookupItem>();
+    private bool _saving;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _positions = await Lookup.GetPositionsAsync();
+        _departments = await Lookup.GetDepartmentsAsync();
+        _locations = await Lookup.GetLocationsAsync();
+        _managers = await Lookup.GetManagerCandidatesAsync(null);
+    }
+
+    private async Task HandleSave()
+    {
+        _saving = true;
+        _errorMessage = null;
+        try
+        {
+            var id = await Mediator.Send(new CreateEmployeeCommand(
+                _form.EmployeeNumber, _form.FirstName, _form.LastName,
+                _form.Email, _form.Phone, _form.Gender,
+                _form.EmploymentType, _form.WorkSchedule,
+                DateOnly.FromDateTime(_form.HireDate),
+                _form.PositionId, _form.DepartmentId, _form.LocationId,
+                _form.ManagerId,
+                _form.Notes));
+            Nav.NavigateTo($"/calisanlar/{id}");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private sealed class FormModel
+    {
+        public string EmployeeNumber { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+        public Gender Gender { get; set; }
+        public EmploymentType EmploymentType { get; set; } = EmploymentType.Permanent;
+        public WorkSchedule WorkSchedule { get; set; } = WorkSchedule.FullTime;
+        public DateTime HireDate { get; set; }
+        public int PositionId { get; set; }
+        public int DepartmentId { get; set; }
+        public int LocationId { get; set; }
+        public int? ManagerId { get; set; }
+        public string? Notes { get; set; }
+    }
+}

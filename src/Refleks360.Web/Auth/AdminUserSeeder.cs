@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Refleks360.Domain.Security;
 using Refleks360.Infrastructure.Identity;
 
 namespace Refleks360.Web.Auth;
@@ -10,7 +11,6 @@ namespace Refleks360.Web.Auth;
 /// </summary>
 public static class AdminUserSeeder
 {
-    public const string AdminRole = "Admin";
     public const string AdminEmail = "admin@refleks360.local";
     public const string AdminUserName = "admin";
     private const string DefaultPassword = "Admin123!";
@@ -22,20 +22,33 @@ public static class AdminUserSeeder
         var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
-        if (!await roleMgr.RoleExistsAsync(AdminRole))
+        // 8 sistem rolünü tohumla
+        foreach (var roleName in Roles.All)
         {
-            var rr = await roleMgr.CreateAsync(new IdentityRole(AdminRole));
-            if (!rr.Succeeded)
+            if (!await roleMgr.RoleExistsAsync(roleName))
             {
-                logger.LogError("Admin rolü oluşturulamadı: {Errors}", string.Join("; ", rr.Errors.Select(e => e.Description)));
-                return;
+                var rr = await roleMgr.CreateAsync(new IdentityRole(roleName));
+                if (!rr.Succeeded)
+                {
+                    logger.LogError("{Role} rolü oluşturulamadı: {Errors}",
+                        roleName, string.Join("; ", rr.Errors.Select(e => e.Description)));
+                }
+                else
+                {
+                    logger.LogInformation("Rol oluşturuldu: {Role}", roleName);
+                }
             }
-            logger.LogInformation("Admin rolü oluşturuldu.");
         }
 
         var existing = await userMgr.FindByNameAsync(AdminUserName);
         if (existing is not null)
         {
+            // Eski admin'i SystemAdmin rolüne yükselt (önceki sürümden geliyorsa).
+            if (!await userMgr.IsInRoleAsync(existing, Roles.SystemAdmin))
+            {
+                await userMgr.AddToRoleAsync(existing, Roles.SystemAdmin);
+                logger.LogInformation("Mevcut admin {User} SystemAdmin rolüne eklendi.", existing.UserName);
+            }
             logger.LogInformation("Admin kullanıcı zaten var ({UserName}).", existing.UserName);
             return;
         }
@@ -66,7 +79,7 @@ public static class AdminUserSeeder
             return;
         }
 
-        await userMgr.AddToRoleAsync(user, AdminRole);
-        logger.LogInformation("Admin kullanıcı oluşturuldu: {UserName} (rol: {Role})", AdminUserName, AdminRole);
+        await userMgr.AddToRoleAsync(user, Roles.SystemAdmin);
+        logger.LogInformation("Admin kullanıcı oluşturuldu: {UserName} (rol: {Role})", AdminUserName, Roles.SystemAdmin);
     }
 }

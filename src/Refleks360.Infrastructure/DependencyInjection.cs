@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -56,6 +57,11 @@ public static class DependencyInjection
 
         services.AddScoped<ITaxParameterService, TaxParameterService>();
         services.AddScoped<IEmployeeQueryService, EmployeeQueryService>();
+        services.AddScoped<IOrganizationLookupService, OrganizationLookupService>();
+        services.AddScoped<IUserAdminService, UserAdminService>();
+
+        // MediatR Infrastructure handler'larını da tara.
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
 
         return services;
     }

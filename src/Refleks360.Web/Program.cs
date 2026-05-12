@@ -1,7 +1,9 @@
 using Hangfire;
 using Hangfire.SqlServer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Refleks360.Application;
 using Refleks360.Infrastructure;
 using Refleks360.Infrastructure.Identity;
 using Refleks360.Infrastructure.Persistence.Auditing;
@@ -23,11 +25,15 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSyncfusionBlazor();
 
 builder.Services.AddMemoryCache();
+builder.Services.AddRefleks360Application();
 builder.Services.AddRefleks360Infrastructure(builder.Configuration);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditUserContext, HttpAuditUserContext>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, AppUserClaimsPrincipalFactory>();
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 builder.Services.ConfigureApplicationCookie(options =>
 {

@@ -1,3 +1,5 @@
+@using Refleks360.Domain.Security
+
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Refleks 360 ÜP</a>
@@ -14,16 +16,29 @@
             </NavLink>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="calisanlar">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Çalışanlar
-            </NavLink>
-        </div>
+        <AuthorizeView Policy="@Permissions.EmployeeView">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="calisanlar">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Çalışanlar
+                </NavLink>
+            </div>
+        </AuthorizeView>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="hesaplama">
                 <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Maaş Hesaplama
             </NavLink>
         </div>
+
+        <AuthorizeView Policy="@Permissions.UserManage">
+            <div class="nav-item px-3 mt-3">
+                <small class="text-muted ps-3">YÖNETİM</small>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/kullanicilar">
+                    <span class="bi bi-person-circle" aria-hidden="true"></span> Kullanıcılar
+                </NavLink>
+            </div>
+        </AuthorizeView>
     </nav>
 </div>

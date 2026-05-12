@@ -1,16 +1,23 @@
 @page "/calisanlar"
-@attribute [Authorize]
+@attribute [Authorize(Policy = Permissions.EmployeeView)]
 @rendermode InteractiveServer
 @using System.Globalization
 @using Refleks360.Application.Abstractions
 @using Refleks360.Application.Employees
 @using Refleks360.Domain.Organization
+@using Refleks360.Domain.Security
 @using Syncfusion.Blazor.Grids
 @inject IEmployeeQueryService EmployeeQueries
+@inject NavigationManager Nav
 
 <PageTitle>Çalışanlar</PageTitle>
 
-<h1>Çalışanlar</h1>
+<div class="d-flex align-items-start justify-content-between mb-3">
+    <h1>Çalışanlar</h1>
+    <AuthorizeView Policy="@Permissions.EmployeeEdit">
+        <a class="btn btn-primary btn-sm" href="/calisanlar/yeni">+ Yeni Çalışan</a>
+    </AuthorizeView>
+</div>
 
 @if (_loadError is not null)
 {
@@ -34,6 +41,7 @@ else
             AllowFiltering="true"
             AllowResizing="true"
             Toolbar="@(new List<string> { "Search" })">
+        <GridEvents TValue="EmployeeListItem" RowSelected="OnRowSelected"></GridEvents>
         <GridPageSettings PageSize="15"></GridPageSettings>
         <GridFilterSettings Type="FilterType.Excel"></GridFilterSettings>
         <GridColumns>
@@ -77,6 +85,14 @@ else
         catch (Exception ex)
         {
             _loadError = "Çalışan listesi yüklenemedi: " + ex.Message;
+        }
+    }
+
+    private void OnRowSelected(RowSelectEventArgs<EmployeeListItem> args)
+    {
+        if (args.Data is not null)
+        {
+            Nav.NavigateTo($"/calisanlar/{args.Data.Id}");
         }
     }
 

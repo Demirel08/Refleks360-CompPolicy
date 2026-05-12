@@ -1,0 +1,326 @@
+@page "/calisanlar/{Id:int}"
+@attribute [Authorize(Policy = Permissions.EmployeeView)]
+@rendermode InteractiveServer
+@using MediatR
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Employees
+@using Refleks360.Application.Employees.Commands
+@using Refleks360.Application.Employees.Queries
+@using Refleks360.Domain.Organization
+@using Refleks360.Domain.Security
+@inject IMediator Mediator
+@inject IOrganizationLookupService Lookup
+@inject NavigationManager Nav
+@inject IAuthorizationService AuthZ
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Çalışan Detayı</PageTitle>
+
+@if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+    <a class="btn btn-secondary" href="/calisanlar">← Listeye dön</a>
+}
+else if (_employee is null)
+{
+    <p><em>Yükleniyor...</em></p>
+}
+else
+{
+    <div class="d-flex align-items-start justify-content-between mb-3">
+        <div>
+            <h1 class="mb-1">@_employee.FirstName @_employee.LastName</h1>
+            <p class="text-muted mb-0">
+                Sicil <strong>@_employee.EmployeeNumber</strong> ·
+                @_employee.PositionTitle (@_employee.JobGradeCode) ·
+                @_employee.DepartmentName · @_employee.LocationName
+            </p>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm" href="/calisanlar">← Listeye dön</a>
+    </div>
+
+    @if (_canEdit)
+    {
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item"><button type="button" class="nav-link @TabClass("personal")" @onclick='() => _activeTab = "personal"'>Kişisel</button></li>
+            <li class="nav-item"><button type="button" class="nav-link @TabClass("job")"      @onclick='() => _activeTab = "job"'>İş</button></li>
+            <li class="nav-item"><button type="button" class="nav-link @TabClass("salary")"   @onclick='() => _activeTab = "salary"'>Ücret</button></li>
+            <li class="nav-item"><button type="button" class="nav-link @TabClass("history")"  @onclick='() => _activeTab = "history"'>Geçmiş</button></li>
+        </ul>
+
+        <EditForm Model="_form" OnValidSubmit="HandleSave">
+            <DataAnnotationsValidator />
+
+            @if (_activeTab == "personal")
+            {
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Sicil No</label>
+                        <input class="form-control" @bind="_form.EmployeeNumber" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Ad</label>
+                        <input class="form-control" @bind="_form.FirstName" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Soyad</label>
+                        <input class="form-control" @bind="_form.LastName" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">E-posta</label>
+                        <input class="form-control" @bind="_form.Email" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Telefon</label>
+                        <input class="form-control" @bind="_form.Phone" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Cinsiyet</label>
+                        <select class="form-select" @bind="_form.Gender">
+                            <option value="@Gender.NotSpecified">Belirtilmemiş</option>
+                            <option value="@Gender.Male">Erkek</option>
+                            <option value="@Gender.Female">Kadın</option>
+                        </select>
+                    </div>
+                </div>
+            }
+
+            @if (_activeTab == "job")
+            {
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Pozisyon</label>
+                        <select class="form-select" @bind="_form.PositionId">
+                            @foreach (var p in _positions) { <option value="@p.Id">@p.Name</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Departman</label>
+                        <select class="form-select" @bind="_form.DepartmentId">
+                            @foreach (var d in _departments) { <option value="@d.Id">@d.Name</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Lokasyon</label>
+                        <select class="form-select" @bind="_form.LocationId">
+                            @foreach (var l in _locations) { <option value="@l.Id">@l.Name</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Yönetici</label>
+                        <select class="form-select" @bind="_form.ManagerId">
+                            <option value="">— yok —</option>
+                            @foreach (var m in _managers) { <option value="@m.Id">@m.Name</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Sözleşme Tipi</label>
+                        <select class="form-select" @bind="_form.EmploymentType">
+                            <option value="@EmploymentType.Permanent">Süresiz</option>
+                            <option value="@EmploymentType.FixedTerm">Belirli süreli</option>
+                            <option value="@EmploymentType.Intern">Stajyer</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Çalışma</label>
+                        <select class="form-select" @bind="_form.WorkSchedule">
+                            <option value="@WorkSchedule.FullTime">Tam zamanlı</option>
+                            <option value="@WorkSchedule.PartTime">Yarı zamanlı</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Durum</label>
+                        <select class="form-select" @bind="_form.Status">
+                            <option value="@EmployeeStatus.Active">Aktif</option>
+                            <option value="@EmployeeStatus.OnLeave">İzinli</option>
+                            <option value="@EmployeeStatus.Terminated">Ayrılmış</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">İşe Giriş</label>
+                        <input type="date" class="form-control" @bind="_form.HireDate" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Ayrılış Tarihi</label>
+                        <input type="date" class="form-control" @bind="_form.TerminationDate" />
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Notlar</label>
+                        <textarea class="form-control" rows="3" @bind="_form.Notes"></textarea>
+                    </div>
+                    <div class="col-md-12 form-check">
+                        <input id="isLocked" type="checkbox" class="form-check-input" @bind="_form.IsLocked" />
+                        <label class="form-check-label" for="isLocked">Bu çalışan zam senaryolarında kilitli (manuel atama gerekir)</label>
+                    </div>
+                </div>
+            }
+
+            @if (_activeTab == "salary")
+            {
+                <div class="alert alert-info small">
+                    Ücret tablosu Hafta 9 ile gelecek (SalaryBand entity + ücret geçmişi).
+                </div>
+            }
+
+            @if (_activeTab == "history")
+            {
+                <div class="alert alert-info small">
+                    Audit log üzerinden bu çalışana ait tüm değişiklikler Hafta 20'de gösterilecek.
+                </div>
+            }
+
+            <div class="mt-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary" disabled="@_saving">Kaydet</button>
+                @if (_canDelete)
+                {
+                    <button type="button" class="btn btn-outline-danger" @onclick="HandleDelete" disabled="@_saving">Sil</button>
+                }
+                @if (_savedMessage is not null)
+                {
+                    <span class="text-success align-self-center">@_savedMessage</span>
+                }
+            </div>
+        </EditForm>
+    }
+    else
+    {
+        <div class="alert alert-warning small">Bu kullanıcı yalnızca görüntüleme yetkisine sahip; düzenleme yapamaz.</div>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private EmployeeDetail? _employee;
+    private string? _loadError;
+    private string _activeTab = "personal";
+    private bool _saving;
+    private string? _savedMessage;
+    private bool _canEdit;
+    private bool _canDelete;
+
+    private IReadOnlyList<LookupItem> _positions = Array.Empty<LookupItem>();
+    private IReadOnlyList<LookupItem> _departments = Array.Empty<LookupItem>();
+    private IReadOnlyList<LookupItem> _locations = Array.Empty<LookupItem>();
+    private IReadOnlyList<LookupItem> _managers = Array.Empty<LookupItem>();
+
+    private FormModel _form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _employee = await Mediator.Send(new GetEmployeeByIdQuery(Id));
+            if (_employee is null)
+            {
+                _loadError = "Çalışan bulunamadı.";
+                return;
+            }
+
+            var state = await AuthState.GetAuthenticationStateAsync();
+            _canEdit = (await AuthZ.AuthorizeAsync(state.User, Permissions.EmployeeEdit)).Succeeded;
+            _canDelete = (await AuthZ.AuthorizeAsync(state.User, Permissions.EmployeeDelete)).Succeeded;
+
+            _positions = await Lookup.GetPositionsAsync();
+            _departments = await Lookup.GetDepartmentsAsync();
+            _locations = await Lookup.GetLocationsAsync();
+            _managers = await Lookup.GetManagerCandidatesAsync(_employee.Id);
+
+            _form = FormModel.From(_employee);
+        }
+        catch (Exception ex)
+        {
+            _loadError = "Veri yüklenemedi: " + ex.Message;
+        }
+    }
+
+    private async Task HandleSave()
+    {
+        if (_employee is null) return;
+        _saving = true;
+        _savedMessage = null;
+        try
+        {
+            await Mediator.Send(new UpdateEmployeeCommand(
+                Id,
+                _form.EmployeeNumber, _form.FirstName, _form.LastName,
+                _form.Email, _form.Phone, _form.Gender,
+                _form.EmploymentType, _form.WorkSchedule, _form.Status,
+                _form.HireDateOnly, _form.TerminationDateOnly,
+                _form.PositionId, _form.DepartmentId, _form.LocationId,
+                _form.ManagerId,
+                _form.IsLocked, _form.Notes));
+            _savedMessage = "Kaydedildi.";
+        }
+        catch (Exception ex)
+        {
+            _savedMessage = "Hata: " + ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task HandleDelete()
+    {
+        if (_employee is null) return;
+        _saving = true;
+        try
+        {
+            await Mediator.Send(new DeleteEmployeeCommand(Id));
+            Nav.NavigateTo("/calisanlar");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private string TabClass(string tab) => _activeTab == tab ? "active" : "";
+
+    private sealed class FormModel
+    {
+        public string EmployeeNumber { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+        public Gender Gender { get; set; }
+        public EmploymentType EmploymentType { get; set; }
+        public WorkSchedule WorkSchedule { get; set; }
+        public EmployeeStatus Status { get; set; }
+        public DateTime HireDate { get; set; }
+        public DateTime? TerminationDate { get; set; }
+        public int PositionId { get; set; }
+        public int DepartmentId { get; set; }
+        public int LocationId { get; set; }
+        public int? ManagerId { get; set; }
+        public bool IsLocked { get; set; }
+        public string? Notes { get; set; }
+
+        public DateOnly HireDateOnly => DateOnly.FromDateTime(HireDate);
+        public DateOnly? TerminationDateOnly => TerminationDate.HasValue ? DateOnly.FromDateTime(TerminationDate.Value) : null;
+
+        public static FormModel From(EmployeeDetail d) => new()
+        {
+            EmployeeNumber = d.EmployeeNumber,
+            FirstName = d.FirstName,
+            LastName = d.LastName,
+            Email = d.Email,
+            Phone = d.Phone,
+            Gender = d.Gender,
+            EmploymentType = d.EmploymentType,
+            WorkSchedule = d.WorkSchedule,
+            Status = d.Status,
+            HireDate = d.HireDate.ToDateTime(TimeOnly.MinValue),
+            TerminationDate = d.TerminationDate?.ToDateTime(TimeOnly.MinValue),
+            PositionId = d.PositionId,
+            DepartmentId = d.DepartmentId,
+            LocationId = d.LocationId,
+            ManagerId = d.ManagerId,
+            IsLocked = d.IsLocked,
+            Notes = d.Notes,
+        };
+    }
+}
