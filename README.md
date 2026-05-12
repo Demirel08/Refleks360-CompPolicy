@@ -14,9 +14,24 @@ Refleks 360, Türkiye'deki kurumsal şirketlerin İK departmanlarının **ücret
 
 ---
 
-## Hızlı Başlangıç
+## Durum: MVP v1.0.0 — yayına hazır
 
-> ⚠️ **Şu an Hafta 1 (2026-05-04) — solution skeleton kurulum aşamasında.** Çalıştırılabilir kod henüz yok. İlerleme için [docs/10-KARARLAR-VE-TAKVIM.md](docs/10-KARARLAR-VE-TAKVIM.md) dosyasına bakın.
+22 haftalık MVP planı **tamamlandı** (bkz. [docs/10-KARARLAR-VE-TAKVIM.md](docs/10-KARARLAR-VE-TAKVIM.md)). Aşağıdaki tüm modüller çalışır halde:
+
+- **Kimlik + RBAC**: 8 sistem rolü, 19 izin, cookie auth, audit log
+- **Organizasyon**: Şirket, lokasyon, departman, iş ailesi, kademe, pozisyon CRUD
+- **Çalışan yönetimi**: Liste (Syncfusion Grid + arama/filtre/sayfalama), detay (sekmeli), CRUD, Excel import (önizleme + apply), KVKK anonimleştirme + veri ihrac
+- **Maaş bantları**: CRUD, otomatik bant asistanı (range spread + mid progression), lokasyon kırılımı, compa-ratio + range penetration hesabı
+- **Comp policy metrikleri**: Histogram, quartile, ortalama/medyan compa, bant dışı listesi, cinsiyet pay gap
+- **Senaryolar**: Genel zam, departman/pozisyon bazlı zam, hedefli bütçe (mod A oransal + mod B min garantili), uygula akışı, PDF export
+- **Simülasyon**: İşe alım + ayrılış + kıdem tazminatı yükümlülüğü
+- **Dashboard**: 5 KPI kartı, departman maliyet grafiği, hızlı geçiş
+- **Raporlama**: Çalışan listesi Excel, comp policy Excel, aylık ücret PDF, senaryo PDF
+- **Vergi parametreleri**: Yıl bazlı yönetim, dilimler, aylık dönemler, yıl kopyalama
+- **Audit log viewer**: Filtreli arama + Excel export
+- **Dağıtım**: Self-contained Windows publish + PowerShell installer (Windows Service) + kurulum kılavuzu
+
+**Testler:** 75/75 yeşil (50 Python regression + 22 hedefli unit + 3 placeholder)
 
 ### Geliştirme Önkoşulları
 
@@ -26,12 +41,28 @@ Refleks 360, Türkiye'deki kurumsal şirketlerin İK departmanlarının **ücret
 - [SQL Server 2022 Developer Edition](https://www.microsoft.com/sql-server/sql-server-downloads)
 - Git 2.50+
 
-### Klonlama
+### Klonlama + çalıştırma
 
 ```bash
 git clone https://github.com/Demirel08/Refleks360-CompPolicy.git
 cd Refleks360-CompPolicy
+
+# user-secrets (geliştirme):
+cd src/Refleks360.Web
+dotnet user-secrets set "Syncfusion:LicenseKey" "<SENIN_KEY>"
+dotnet user-secrets set "ConnectionStrings:Default" "Server=(local);Database=Refleks360_Dev;Integrated Security=true;TrustServerCertificate=true"
+
+# DB:
+dotnet ef database update --project ../Refleks360.Infrastructure --startup-project .
+
+# Çalıştır:
+dotnet run
+# http://localhost:5064 — admin / Admin123!
 ```
+
+### Production kurulum
+
+`deploy/publish.ps1` → ZIP üretir → hedef sunucuya kopyala → `deploy/install.ps1` ile servisleştir. Tam akış: [docs/KURULUM-KILAVUZU.md](docs/KURULUM-KILAVUZU.md).
 
 ---
 

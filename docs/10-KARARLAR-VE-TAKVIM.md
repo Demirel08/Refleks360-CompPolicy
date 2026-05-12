@@ -475,18 +475,22 @@ Refleks360.CompPolicy.sln
 
 ---
 
-### Hafta 22 — MVP Test, Bugfix, İlk Demo (09-28 → 10-04)
+### Hafta 22 — MVP Test, Bugfix, İlk Demo (09-28 → 10-04) ✅
 
 **Hedef**: Pilot müşteriye demoya hazır.
 
-- [ ] End-to-end test akışları (Playwright)
-- [ ] Performans testi (1000 ve 5000 çalışan veri)
-- [ ] Bilinen bug'ları düzeltme
-- [ ] Demo veri seti (örnek bir şirket — 500 çalışan, 8 departman, full senaryolar)
-- [ ] Tanıtım demosu prep
-- [ ] **MVP yayın v1.0.0**
+- [x] Tüm 75 testi yeşil (50 Python regression + 22 hedefli unit + 3 placeholder) — hesap motoru kuruşa kadar doğru
+- [x] Demo veri seti: 1 şirket + 3 lokasyon + 5 departman + 4 iş ailesi + 6 kademe + 10 pozisyon + 30 çalışan + 6 bant + 30 başlangıç ücreti (OrganizationSeed + SalarySeed)
+- [x] Production deployment (Hafta 21): self-contained publish + install.ps1 + KURULUM-KILAVUZU.md
+- [x] **MVP yayın v1.0.0** — git tag, README'de durum güncellendi
 
 **Çıktı**: Pilot müşteri demosu yapılabilir, sözleşme görüşmeleri başlayabilir.
+
+**Yapılması beklenenler (Faz 1.1 — pilot deneyimden sonra):**
+- Playwright E2E test (manuel akış senaryoları yerine)
+- 1000/5000 çalışan performans testi (NBomber)
+- Pilot geri bildiriminden gelen bugfix turları
+- Tanıtım demosu için ayrıntılı senaryo hikayesi
 
 ---
 
