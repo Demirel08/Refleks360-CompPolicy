@@ -1,0 +1,172 @@
+@page "/senaryolar/yeni"
+@attribute [Authorize(Policy = Permissions.ScenarioCreate)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Organization
+@using Refleks360.Application.Scenarios
+@using Refleks360.Domain.Scenarios
+@using Refleks360.Domain.Security
+@inject IScenarioService Scenarios
+@inject IOrganizationAdminService Org
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<PageTitle>Yeni Senaryo</PageTitle>
+
+<h1>Yeni Senaryo</h1>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-5">
+        <label class="form-label">Senaryo adı</label>
+        <input class="form-control" @bind="_input.Name" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Tip</label>
+        <select class="form-select" @bind="_input.Type">
+            <option value="@ScenarioType.GeneralRaise">Genel zam</option>
+            <option value="@ScenarioType.DepartmentRaise">Departman zammı</option>
+            <option value="@ScenarioType.PositionRaise">Pozisyon zammı</option>
+            <option value="@ScenarioType.TargetedBudget">Hedefli bütçe</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Baz tarih</label>
+        <input type="date" class="form-control" @bind="_input.BaseDate" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Geçerlilik</label>
+        <input type="date" class="form-control" @bind="_input.EffectiveDate" />
+    </div>
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Açıklama</label>
+    <textarea class="form-control" rows="2" @bind="_input.Description"></textarea>
+</div>
+
+<div class="form-check mb-2">
+    <input id="minwage" type="checkbox" class="form-check-input" @bind="_input.MinWageFloor" />
+    <label class="form-check-label" for="minwage">Yeni asgari ücretin altında kalanları @(_input.MinWageGross?.ToString("N0") ?? "0") TL'ye yükselt</label>
+</div>
+<div class="row g-2 mb-3">
+    <div class="col-md-3">
+        <input type="number" class="form-control" placeholder="Asgari brüt (TL)" @bind="_input.MinWageGross" />
+    </div>
+</div>
+
+@if (_input.Type == ScenarioType.GeneralRaise)
+{
+    <div class="card mb-3"><div class="card-body">
+        <h2 class="h6">Genel zam parametreleri</h2>
+        <div class="row g-2">
+            <div class="col-md-3">
+                <label class="form-label small">Genel zam %</label>
+                <input type="number" step="0.5" class="form-control" @bind="_input.GeneralRaisePercent" />
+            </div>
+        </div>
+    </div></div>
+}
+
+@if (_input.Type == ScenarioType.DepartmentRaise)
+{
+    <div class="card mb-3"><div class="card-body">
+        <h2 class="h6">Departman bazlı oranlar (%)</h2>
+        <div class="row g-2">
+            @foreach (var d in _depts)
+            {
+                <div class="col-md-3">
+                    <label class="form-label small">@d.Name</label>
+                    <input type="number" step="0.5" class="form-control"
+                           value="@(_input.DepartmentRaiseRates!.TryGetValue(d.Id, out var v) ? v : 0)"
+                           @onchange="@((ChangeEventArgs e) => _input.DepartmentRaiseRates![d.Id] = ToDec(e.Value))" />
+                </div>
+            }
+        </div>
+    </div></div>
+}
+
+@if (_input.Type == ScenarioType.PositionRaise)
+{
+    <div class="card mb-3"><div class="card-body">
+        <h2 class="h6">Pozisyon bazlı oranlar (%)</h2>
+        <div class="row g-2">
+            @foreach (var p in _positions)
+            {
+                <div class="col-md-3">
+                    <label class="form-label small">@p.Title</label>
+                    <input type="number" step="0.5" class="form-control"
+                           value="@(_input.PositionRaiseRates!.TryGetValue(p.Id, out var v) ? v : 0)"
+                           @onchange="@((ChangeEventArgs e) => _input.PositionRaiseRates![p.Id] = ToDec(e.Value))" />
+                </div>
+            }
+        </div>
+    </div></div>
+}
+
+@if (_input.Type == ScenarioType.TargetedBudget)
+{
+    <div class="card mb-3"><div class="card-body">
+        <h2 class="h6">Hedefli bütçe parametreleri</h2>
+        <div class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label small">Yıllık brüt maaş toplamı hedefi (TL)</label>
+                <input type="number" class="form-control" @bind="_input.TargetTotalAnnualCost" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Min garantili oran (%)</label>
+                <input type="number" step="0.5" class="form-control" @bind="_input.MinGuaranteedPercent" />
+                <small class="text-muted">0 = Mod A (oransal dağıtım); 0&lt; = Mod B (min garantili + kalan oransal)</small>
+            </div>
+        </div>
+    </div></div>
+}
+
+<div class="d-flex gap-2">
+    <button class="btn btn-primary" @onclick="HandleCreate" disabled="@_busy">Senaryoyu Hesapla</button>
+    <a class="btn btn-secondary" href="/senaryolar">İptal</a>
+    @if (_error is not null) { <span class="text-danger align-self-center">@_error</span> }
+</div>
+
+@code {
+    private CreateScenarioInput _input = new()
+    {
+        Type = ScenarioType.GeneralRaise,
+        BaseDate = DateOnly.FromDateTime(DateTime.Today),
+        EffectiveDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(1)),
+        MinWageGross = 33_030m,
+        GeneralRaisePercent = 20m,
+        DepartmentRaiseRates = new Dictionary<int, decimal>(),
+        PositionRaiseRates = new Dictionary<int, decimal>(),
+    };
+    private bool _busy;
+    private string? _error;
+    private IReadOnlyList<DepartmentDto> _depts = Array.Empty<DepartmentDto>();
+    private IReadOnlyList<PositionDto> _positions = Array.Empty<PositionDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _depts = await Org.GetDepartmentsAsync();
+        _positions = await Org.GetPositionsAsync();
+    }
+
+    private async Task HandleCreate()
+    {
+        _busy = true; _error = null;
+        try
+        {
+            var state = await AuthState.GetAuthenticationStateAsync();
+            var user = state.User.Identity?.Name ?? "system";
+            var id = await Scenarios.CreateAsync(_input, user);
+            Nav.NavigateTo($"/senaryolar/{id}");
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private static decimal ToDec(object? v)
+    {
+        if (v is null) return 0m;
+        var s = v.ToString();
+        return decimal.TryParse(s, out var d) ? d : 0m;
+    }
+}

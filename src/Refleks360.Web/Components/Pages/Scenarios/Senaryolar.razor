@@ -1,0 +1,81 @@
+@page "/senaryolar"
+@attribute [Authorize(Policy = Permissions.ScenarioView)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Scenarios
+@using Refleks360.Domain.Scenarios
+@using Refleks360.Domain.Security
+@inject IScenarioService Scenarios
+
+<PageTitle>Senaryolar</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <h1>Senaryolar</h1>
+    <AuthorizeView Policy="@Permissions.ScenarioCreate">
+        <a class="btn btn-primary btn-sm" href="/senaryolar/yeni">+ Yeni Senaryo</a>
+    </AuthorizeView>
+</div>
+
+@if (_list is null) { <p>Yükleniyor...</p> }
+else if (_list.Count == 0)
+{
+    <div class="alert alert-info">Henüz senaryo yok. Yeni bir senaryo oluştur.</div>
+}
+else
+{
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>Ad</th><th>Tip</th><th>Durum</th><th>Baz Tarih</th>
+                <th class="text-end">Çalışan</th>
+                <th class="text-end">Eski Brüt Top.</th>
+                <th class="text-end">Yeni Brüt Top.</th>
+                <th class="text-end">Eski İşv. Mal.</th>
+                <th class="text-end">Yeni İşv. Mal.</th>
+                <th>Oluşturma</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in _list)
+            {
+                <tr>
+                    <td><a href="/senaryolar/@s.Id"><strong>@s.Name</strong></a></td>
+                    <td>@TypeText(s.Type)</td>
+                    <td>@StatusBadge(s.Status)</td>
+                    <td>@s.BaseDate.ToString("dd.MM.yyyy")</td>
+                    <td class="text-end">@s.EmployeeCount</td>
+                    <td class="text-end">@s.TotalOldGross.ToString("N0")</td>
+                    <td class="text-end">@s.TotalNewGross.ToString("N0")</td>
+                    <td class="text-end">@s.TotalOldEmployerCost.ToString("N0")</td>
+                    <td class="text-end">@s.TotalNewEmployerCost.ToString("N0")</td>
+                    <td class="small">@s.CreatedBy<br /><span class="text-muted">@s.CreatedAtUtc.ToLocalTime().ToString("g")</span></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<ScenarioListItem>? _list;
+    protected override async Task OnInitializedAsync() => _list = await Scenarios.GetAllAsync();
+
+    private static string TypeText(ScenarioType t) => t switch
+    {
+        ScenarioType.GeneralRaise => "Genel zam",
+        ScenarioType.DepartmentRaise => "Departman zammı",
+        ScenarioType.PositionRaise => "Pozisyon zammı",
+        ScenarioType.TargetedBudget => "Hedefli bütçe",
+        ScenarioType.MeritMatrix => "Merit matrix",
+        ScenarioType.Simulation => "Simülasyon",
+        _ => t.ToString(),
+    };
+
+    private static MarkupString StatusBadge(ScenarioStatus s) => s switch
+    {
+        ScenarioStatus.Draft => new MarkupString("<span class='badge bg-secondary'>Taslak</span>"),
+        ScenarioStatus.Calculated => new MarkupString("<span class='badge bg-info text-dark'>Hesaplandı</span>"),
+        ScenarioStatus.Applied => new MarkupString("<span class='badge bg-success'>Uygulandı</span>"),
+        ScenarioStatus.Cancelled => new MarkupString("<span class='badge bg-light text-dark'>İptal</span>"),
+        _ => new MarkupString(s.ToString()),
+    };
+}

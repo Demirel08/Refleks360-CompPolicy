@@ -1,0 +1,121 @@
+@page "/senaryolar/{Id:int}"
+@attribute [Authorize(Policy = Permissions.ScenarioView)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Scenarios
+@using Refleks360.Domain.Scenarios
+@using Refleks360.Domain.Security
+@inject IScenarioService Scenarios
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Senaryo Detayı</PageTitle>
+
+@if (_data is null) { <p>Yükleniyor...</p> }
+else
+{
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h1 class="mb-0">@_data.Name</h1>
+            <p class="text-muted mb-0">@_data.Type — @_data.Status (oluşturan: @_data.CreatedBy, @_data.CreatedAtUtc.ToLocalTime():g)</p>
+            @if (!string.IsNullOrWhiteSpace(_data.Description))
+            {
+                <p class="text-muted small">@_data.Description</p>
+            }
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary btn-sm" href="/senaryolar">← Senaryolar</a>
+            @if (_data.Status == ScenarioStatus.Calculated)
+            {
+                <AuthorizeView Policy="@Permissions.ScenarioApply">
+                    <button class="btn btn-success btn-sm" @onclick="Apply">Senaryoyu Uygula</button>
+                </AuthorizeView>
+                <button class="btn btn-outline-danger btn-sm" @onclick="Cancel">İptal Et</button>
+            }
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="small text-muted">Çalışan</div>
+            <div class="h3 mb-0">@_data.Employees.Count</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="small text-muted">Eski Brüt Top. (Yıllık)</div>
+            <div class="h5 mb-0">@(((_data.Employees.Sum(e => e.OldGross)) * 12m).ToString("N0")) ₺</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="small text-muted">Yeni Brüt Top. (Yıllık)</div>
+            <div class="h5 mb-0">@(((_data.Employees.Sum(e => e.NewGross)) * 12m).ToString("N0")) ₺</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="small text-muted">Yıllık İşveren Yükü Δ</div>
+            @{ var delta = (_data.Employees.Sum(e => e.NewEmployerCost) - _data.Employees.Sum(e => e.OldEmployerCost)) * 12m; }
+            <div class="h5 mb-0 @(delta >= 0 ? "text-danger" : "text-success")">@delta.ToString("+#,0;-#,0;0") ₺</div>
+        </div></div></div>
+    </div>
+
+    @if (_msg is not null) { <div class="alert alert-info">@_msg</div> }
+
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>Sicil</th><th>Ad Soyad</th><th>Departman</th>
+                <th class="text-end">Eski Brüt</th><th class="text-end">Yeni Brüt</th>
+                <th class="text-end">% Zam</th><th class="text-end">+TL</th>
+                <th class="text-end">Eski Net</th><th class="text-end">Yeni Net</th>
+                <th class="text-end">Eski İşv. Mal.</th><th class="text-end">Yeni İşv. Mal.</th>
+                <th>K</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var e in _data.Employees)
+            {
+                <tr>
+                    <td><a href="/calisanlar/@e.EmployeeId"><code>@e.EmployeeNumber</code></a></td>
+                    <td>@e.FullName</td>
+                    <td>@e.DepartmentName</td>
+                    <td class="text-end">@e.OldGross.ToString("N0")</td>
+                    <td class="text-end fw-bold">@e.NewGross.ToString("N0")</td>
+                    <td class="text-end">@e.RaisePercent.ToString("F1")</td>
+                    <td class="text-end @(e.RaiseAmount > 0 ? "text-success" : "")">@e.RaiseAmount.ToString("N0")</td>
+                    <td class="text-end">@e.OldNet.ToString("N0")</td>
+                    <td class="text-end">@e.NewNet.ToString("N0")</td>
+                    <td class="text-end">@e.OldEmployerCost.ToString("N0")</td>
+                    <td class="text-end">@e.NewEmployerCost.ToString("N0")</td>
+                    <td>@(e.IsLocked ? "🔒" : "")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private ScenarioDetail? _data;
+    private string? _msg;
+
+    protected override async Task OnInitializedAsync() => _data = await Scenarios.GetByIdAsync(Id);
+
+    private async Task Apply()
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Senaryoyu uygulamak istediğine emin misin? Bu işlem geri alınamaz.");
+        if (!confirmed) return;
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var user = state.User.Identity?.Name ?? "system";
+        try
+        {
+            await Scenarios.ApplyAsync(Id, user);
+            _msg = "Senaryo başarıyla uygulandı. Çalışan ücretleri güncellendi.";
+            _data = await Scenarios.GetByIdAsync(Id);
+        }
+        catch (Exception ex) { _msg = "Hata: " + ex.Message; }
+    }
+
+    private async Task Cancel()
+    {
+        try { await Scenarios.CancelAsync(Id); _data = await Scenarios.GetByIdAsync(Id); _msg = "Senaryo iptal edildi."; }
+        catch (Exception ex) { _msg = "Hata: " + ex.Message; }
+    }
+}

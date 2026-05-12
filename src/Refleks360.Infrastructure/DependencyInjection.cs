@@ -63,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationAdminService, OrganizationAdminService>();
         services.AddScoped<ISalaryBandService, SalaryBandService>();
         services.AddScoped<ICompPolicyMetricsService, CompPolicyMetricsService>();
+        services.AddScoped<IScenarioService, ScenarioService>();
 
         // MediatR Infrastructure handler'larını da tara.
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));

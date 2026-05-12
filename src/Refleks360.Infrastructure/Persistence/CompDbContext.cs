@@ -27,6 +27,8 @@ public sealed class CompDbContext(DbContextOptions<CompDbContext> options)
     public DbSet<EmployeeEntity> Employees => Set<EmployeeEntity>();
     public DbSet<SalaryBandEntity> SalaryBands => Set<SalaryBandEntity>();
     public DbSet<EmployeeSalaryEntity> EmployeeSalaries => Set<EmployeeSalaryEntity>();
+    public DbSet<ScenarioEntity> Scenarios => Set<ScenarioEntity>();
+    public DbSet<ScenarioEmployeeEntity> ScenarioEmployees => Set<ScenarioEmployeeEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -247,6 +249,34 @@ public sealed class CompDbContext(DbContextOptions<CompDbContext> options)
             b.Property(e => e.ChangeAmount).HasColumnType("decimal(18,2)");
             b.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Cascade);
             b.HasIndex(e => new { e.EmployeeId, e.EffectiveDate });
+        });
+
+        modelBuilder.Entity<ScenarioEntity>(b =>
+        {
+            b.ToTable("Scenarios");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.Name).HasMaxLength(256).IsRequired();
+            b.Property(e => e.CreatedBy).HasMaxLength(256).IsRequired();
+            b.Property(e => e.AppliedBy).HasMaxLength(256);
+            b.Property(e => e.ParametersJson).HasColumnType("nvarchar(max)");
+            b.HasIndex(e => e.CreatedAtUtc);
+        });
+
+        modelBuilder.Entity<ScenarioEmployeeEntity>(b =>
+        {
+            b.ToTable("ScenarioEmployees");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.OldGross).HasColumnType("decimal(18,2)");
+            b.Property(e => e.NewGross).HasColumnType("decimal(18,2)");
+            b.Property(e => e.OldNetMonthly).HasColumnType("decimal(18,2)");
+            b.Property(e => e.NewNetMonthly).HasColumnType("decimal(18,2)");
+            b.Property(e => e.OldEmployerCost).HasColumnType("decimal(18,2)");
+            b.Property(e => e.NewEmployerCost).HasColumnType("decimal(18,2)");
+            b.Property(e => e.RaisePercent).HasColumnType("decimal(8,4)");
+            b.Property(e => e.RaiseAmount).HasColumnType("decimal(18,2)");
+            b.HasOne(e => e.Scenario).WithMany(s => s.Employees).HasForeignKey(e => e.ScenarioId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+            b.HasIndex(e => new { e.ScenarioId, e.EmployeeId }).IsUnique();
         });
     }
 }
