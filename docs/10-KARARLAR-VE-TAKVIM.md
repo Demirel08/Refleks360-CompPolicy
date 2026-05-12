@@ -224,20 +224,24 @@ Refleks360.CompPolicy.sln
 
 ---
 
-### Hafta 4 — Blazor Server İskelet + Authentication (05-25 → 05-31)
+### Hafta 4 — Blazor Server İskelet + Authentication (05-25 → 05-31) ✅
 
 **Hedef**: Login ekranı çalışıyor, layout var.
 
-- [ ] `Web/Program.cs` — Blazor Server + Identity + Hangfire setup
-- [ ] ASP.NET Identity migration (AspNetUsers vb.)
-- [ ] Layout: `MainLayout.razor`, `NavMenu.razor`
-- [ ] Login/Logout sayfaları
-- [ ] Syncfusion bileşenleri ile temel theme
-- [ ] İlk `Index.razor` — boş dashboard placeholder
-- [ ] Yerel kullanıcı hesabı oluşturma (admin)
-- [ ] Audit log altyapısı (EF interceptor + AuditLog tablosu)
+- [x] `Web/Program.cs` — Blazor Server + Identity + Hangfire setup
+- [x] ASP.NET Identity migration (`20260512192557_AddIdentityAndAuditLog`) — AspNetUsers/Roles/UserClaims/UserLogins/UserRoles/UserTokens/RoleClaims hepsi oluştu
+- [x] Layout: `MainLayout.razor` (auth durumu + Çıkış butonu), `EmptyLayout.razor` (login için), `NavMenu.razor` (Türkçe)
+- [x] Login/Logout sayfaları — `/login` (form post), minimal API uçları `/auth/login` ve `/auth/logout`
+- [x] Auth pipeline: `AddIdentity<ApplicationUser, IdentityRole>` + cookie scheme (`Refleks360.Auth`, 30 dk, sliding), 5 deneme sonrası 15 dk kilit
+- [x] İlk `Home.razor` — proje durumu özeti + Hesaplama linki (`[Authorize]` ile korumalı)
+- [x] Yerel admin kullanıcı tohumlayıcı (`AdminUserSeeder`) — kullanıcı adı `admin`, varsayılan şifre `Admin123!` (üretimde `AdminSeed:Password` user-secret ile override)
+- [x] Audit log altyapısı: `AuditLogEntity` + `AuditSaveChangesInterceptor` (Identity ve audit'ın kendisi exempt) + `IAuditUserContext` → `HttpAuditUserContext` (HttpContext.User.Identity.Name)
+- [x] Hangfire setup: `AddHangfire` + `AddHangfireServer` (SQL Server backed, kendi şemasını ilk açılışta yaratır)
+- [x] `RevalidatingServerAuthenticationStateProvider` — interaktif devre süresince security stamp doğrular (pasif edilen / şifresi değiştirilen kullanıcı düşer)
 
-**Çıktı**: `dotnet run` ile uygulama çalışıyor, login olabiliyorsun, boş anasayfa görüyorsun.
+**Çıktı**: `dotnet run` ile uygulama çalışıyor; anonim kullanıcı `/` istediğinde `/login`'e yönlendiriliyor; `admin`/`Admin123!` ile giriş yapıp `/hesaplama` ve `/` sayfalarını görebiliyor. Tüm testler (75) yeşil; e2e cookie akışı smoke-test edildi.
+
+**Hafta 4 ek not**: Syncfusion bileşenleriyle gerçek tema entegrasyonu Hafta 5 ile birlikte (Çalışan UI'ı yapılırken) yapılacak; şu an Bootstrap default + Syncfusion CSS yüklü.
 
 ---
 

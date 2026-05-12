@@ -1,19 +1,24 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Refleks360.Infrastructure.Identity;
 using Refleks360.Infrastructure.Persistence.Entities;
 using Refleks360.Infrastructure.Persistence.Seed;
 
 namespace Refleks360.Infrastructure.Persistence;
 
 /// <summary>
-/// Refleks 360 ÜP ana <see cref="DbContext"/>'i.
-/// İlk migration <c>InitialCreate</c> sadece vergi tablolarını kurar; çalışan,
-/// senaryo, audit gibi geri kalan şema sonraki haftalarda eklenir.
+/// Refleks 360 ÜP ana <see cref="DbContext"/>'i. ASP.NET Identity tablolarını da
+/// barındırır (<see cref="ApplicationUser"/> tabanlı). Vergi tabloları ve audit log
+/// burada tek bir migration zinciri olarak yönetilir.
 /// </summary>
-public sealed class CompDbContext(DbContextOptions<CompDbContext> options) : DbContext(options)
+public sealed class CompDbContext(DbContextOptions<CompDbContext> options)
+    : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<TaxYearEntity> TaxYears => Set<TaxYearEntity>();
     public DbSet<IncomeTaxBracketEntity> IncomeTaxBrackets => Set<IncomeTaxBracketEntity>();
     public DbSet<MonthlyTaxPeriodEntity> MonthlyTaxPeriods => Set<MonthlyTaxPeriodEntity>();
+    public DbSet<AuditLogEntity> AuditLogs => Set<AuditLogEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -59,6 +64,23 @@ public sealed class CompDbContext(DbContextOptions<CompDbContext> options) : DbC
                 .HasForeignKey(e => e.TaxYearId)
                 .OnDelete(DeleteBehavior.Cascade);
             b.HasIndex(e => new { e.TaxYearId, e.StartMonth }).IsUnique();
+        });
+
+        modelBuilder.Entity<AuditLogEntity>(b =>
+        {
+            b.ToTable("AuditLogs");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.UserName).HasMaxLength(256).IsRequired();
+            b.Property(e => e.Action).HasMaxLength(16).IsRequired();
+            b.Property(e => e.EntityType).HasMaxLength(128).IsRequired();
+            b.Property(e => e.EntityKey).HasMaxLength(256);
+            b.HasIndex(e => e.TimestampUtc);
+            b.HasIndex(e => new { e.EntityType, e.EntityKey });
+        });
+
+        modelBuilder.Entity<ApplicationUser>(b =>
+        {
+            b.Property(u => u.FullName).HasMaxLength(256).IsRequired();
         });
 
         TaxParameters2026Seed.Apply(modelBuilder);

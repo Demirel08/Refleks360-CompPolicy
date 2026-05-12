@@ -1,0 +1,64 @@
+@page "/login"
+@layout EmptyLayout
+@using Microsoft.AspNetCore.Components.Web
+
+<PageTitle>Giriş — Refleks 360 ÜP</PageTitle>
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 100vh; background: #f5f5f5;">
+    <div class="card shadow-sm" style="width: 22rem;">
+        <div class="card-body">
+            <h1 class="h4 mb-3 text-center">Refleks 360 ÜP</h1>
+            <p class="text-muted small text-center mb-4">Ücret Politikası Yönetim Sistemi</p>
+
+            @if (!string.IsNullOrEmpty(Error))
+            {
+                <div class="alert alert-danger small py-2">@ErrorMessage(Error)</div>
+            }
+
+            <form method="post" action="/auth/login">
+                <input type="hidden" name="returnUrl" value="@(ReturnUrl ?? "/")" />
+
+                <div class="mb-3">
+                    <label class="form-label" for="userName">Kullanıcı adı</label>
+                    <input id="userName"
+                           name="userName"
+                           type="text"
+                           class="form-control"
+                           autocomplete="username"
+                           autofocus
+                           required />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="password">Şifre</label>
+                    <input id="password"
+                           name="password"
+                           type="password"
+                           class="form-control"
+                           autocomplete="current-password"
+                           required />
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
+            </form>
+
+            <p class="text-muted small text-center mt-3 mb-0">
+                İlk kurulumda <code>admin</code> hesabı oluşturulur.
+            </p>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+
+    private static string ErrorMessage(string code) => code switch
+    {
+        "missing" => "Kullanıcı adı ve şifre zorunludur.",
+        "invalid" => "Kullanıcı adı veya şifre hatalı.",
+        "locked"  => "Hesap geçici olarak kilitlendi. Birkaç dakika sonra tekrar dene.",
+        "notallowed" => "Bu hesap giriş için izin vermiyor.",
+        _ => "Giriş başarısız.",
+    };
+}
