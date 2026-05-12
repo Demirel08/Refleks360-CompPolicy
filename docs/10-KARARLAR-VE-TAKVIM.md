@@ -172,36 +172,38 @@ Refleks360.CompPolicy.sln
 >
 > **Hedef MVP**: 2026 Eylül sonu (Hafta 22). 2026 yıllık zam dönemi öncesi pilot için hazır.
 
-### Hafta 1 — Hazırlık ve İskelet (2026-05-04 → 05-10)
+### Hafta 1 — Hazırlık ve İskelet (2026-05-04 → 05-10) ✅
 
 **Hedef**: Boş ama derlenip çalışan solution.
 
-- [ ] GitHub private repo oluştur: `Refleks360-CompPolicy`
-- [ ] `.gitignore`, `LICENSE` (kapalı kaynak), `README.md`, `CONTRIBUTING.md`
-- [ ] Visual Studio 2022 Community kurulum, .NET 10 SDK
-- [ ] SQL Server 2022 Developer Edition kurulum (yerel)
-- [ ] Solution iskeleti: 5 src + 3 test projesi
-- [ ] NuGet paketleri ekleme: EF Core 10, Serilog, MediatR, FluentValidation, Mapster, Hangfire
-- [ ] Syncfusion Blazor Community License başvurusu ve kurulum
-- [ ] GitHub Actions: ilk CI workflow (build + test)
-- [ ] İlk commit + ilk PR akışı testi
+- [x] GitHub private repo oluştur: `Refleks360-CompPolicy`
+- [x] `.gitignore`, `LICENSE` (kapalı kaynak), `README.md`, `CONTRIBUTING.md`
+- [x] Visual Studio 2022 Community kurulum, .NET 10 SDK (10.0.103)
+- [x] SQL Server 2022 Developer Edition kurulum (yerel) — Win11 64K sektör fix dahil, bkz. `NOTLAR-LISANS-VE-SECRETS.md` §6
+- [x] Solution iskeleti: 5 src + 3 test projesi (Clean Architecture)
+- [x] NuGet paketleri ekleme: EF Core 10, Serilog, MediatR, FluentValidation, Mapster, Hangfire, QuestPDF, Syncfusion 33.2.4
+- [x] Syncfusion Blazor Community License başvurusu ve kurulum (User Secrets ile)
+- [x] GitHub Actions: ilk CI workflow (build + test) — `.github/workflows/ci.yml`
+- [x] İlk commit + push akışı çalışıyor (PR akışı pratiği gelecek hafta açılacak ilk feature branch ile)
 
-**Çıktı**: `dotnet build` çalışıyor, `dotnet test` boş test set'i geçiyor.
+**Çıktı**: `dotnet build` çalışıyor (0 uyarı, 0 hata), `dotnet test` 3 placeholder test geçiyor.
+
+**Not (Hafta 1 ek)**: SQL Server 2022 RTM Win11 26200'de 4K-sektör uyumsuzluğu sebebiyle kuruluma takıldı. Çözüm: `HKLM\...\stornvme\Parameters\Device\ForcedPhysicalSectorSizeInBytes = "* 4095"` + reboot. NOTLAR'da belgelendi.
 
 ---
 
-### Hafta 2 — Domain Çekirdek + Hesap Motoru (05-11 → 05-17)
+### Hafta 2 — Domain Çekirdek + Hesap Motoru (05-11 → 05-17) ✅
 
 **Hedef**: Saf C# hesap motoru, Python program ile birebir aynı sonuç.
 
-- [ ] `Domain/Calculations/IncomeTaxCalculator.cs` — `AnnualTax`, `MarginalRate`
-- [ ] `Domain/Calculations/SalaryCalculator.cs` — `CalculateMonth`, brüt → net + işveren maliyeti
-- [ ] `Domain/Models/TaxBracket.cs`, `MonthlyTaxPeriod.cs`, `TaxParameters.cs`
-- [ ] **Regression test fixture**: mevcut Python programıyla 50 farklı brüt maaş için sonuçları JSON'a kaydet
-- [ ] xUnit testleri: fixture'a göre 50 vakanın hepsini geç
-- [ ] 2026 değerleri sabit olarak unit test'lerde
+- [x] `Domain/Calculations/IncomeTaxCalculator.cs` — `AnnualTax`, `MarginalRate`
+- [x] `Domain/Calculations/SalaryCalculator.cs` — `CalculateMonth` (brüt → net + işveren maliyeti), `SimulateYearStableGross`
+- [x] `Domain/Calculations/{TaxBracket,MonthlyTaxPeriod,TaxParameters,MonthlyCalculationResult}.cs` (immutable records)
+- [x] **Regression fixture**: `tools/regression/generate_fixture.py` mevcut Python motorundan (`IsciMaliyet/utils/calculations.py`) 50 brüt × 12 ay = 600 ay-vakası üretir → `tests/Refleks360.Domain.Tests/Fixtures/regression-2026.json`
+- [x] xUnit regression: 50 case'in 9 kalemi (PEK, GV ham/istisna/net, damga, net, işveren maliyeti vs.) 1 kuruş (0,01 TL) toleransla geçiyor
+- [x] Hedefli unit testler: asgari ücret kuruşa, SGK matrah tavanı clip, %5 SGK işveren indirimi, dilim geçişi, alt-asgari clip
 
-**Çıktı**: `dotnet test` 50+ regression testi geçiyor. Hesap motoru Python ile kuruşa kadar tutuyor.
+**Çıktı**: `dotnet test` toplam **73 Domain testi** geçiyor (Application + Web placeholder 2 test daha). Hesap motoru Python ile 1 kuruş içinde tutuyor.
 
 ---
 
