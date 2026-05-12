@@ -1,0 +1,120 @@
+@page "/admin/comp-policy"
+@attribute [Authorize(Policy = Permissions.BandView)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.CompPolicy
+@using Refleks360.Domain.Security
+@using Syncfusion.Blazor.Charts
+@inject ICompPolicyMetricsService Metrics
+
+<PageTitle>Comp Policy</PageTitle>
+
+<h1 class="mb-3">Comp Policy — Metrikler</h1>
+
+@if (_data is null)
+{
+    <p>Yükleniyor...</p>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="h6 text-muted small">Bantı olan çalışan</div>
+            <div class="h2 mb-0">@_data.EmployeesWithBand</div>
+            <div class="text-muted small">toplam @_data.EmployeesWithSalary maaşlı</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="h6 text-muted small">Ortalama Compa</div>
+            <div class="h2 mb-0">@_data.AverageCompaRatio.ToString("F2")</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="h6 text-muted small">Medyan Compa</div>
+            <div class="h2 mb-0">@_data.MedianCompaRatio.ToString("F2")</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card text-center"><div class="card-body">
+            <div class="h6 text-muted small">Bant Dışı</div>
+            <div class="h2 mb-0">
+                <span class="text-danger">@_data.BelowBandCount</span> /
+                <span class="text-success">@_data.InBandCount</span> /
+                <span class="text-warning">@_data.AboveBandCount</span>
+            </div>
+            <div class="small text-muted">Alt / İçi / Üst</div>
+        </div></div></div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-7">
+            <div class="card"><div class="card-body">
+                <h2 class="h6">Compa-Ratio Dağılımı</h2>
+                <SfChart Title="Compa-Ratio Histogram" Height="280">
+                    <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.Category" />
+                    <ChartPrimaryYAxis Title="Çalışan" />
+                    <ChartSeriesCollection>
+                        <ChartSeries DataSource="@_data.Histogram"
+                                     XName="@nameof(CompaHistogramBucket.Label)"
+                                     YName="@nameof(CompaHistogramBucket.Count)"
+                                     Type="ChartSeriesType.Column"
+                                     Name="Çalışan" />
+                    </ChartSeriesCollection>
+                </SfChart>
+            </div></div>
+        </div>
+        <div class="col-md-5">
+            <div class="card"><div class="card-body">
+                <h2 class="h6">Bant Penetrasyonu (Quartile)</h2>
+                <SfAccumulationChart Title="Quartile" Height="280">
+                    <AccumulationChartSeriesCollection>
+                        <AccumulationChartSeries DataSource="@_data.Quartiles"
+                                                 XName="@nameof(QuartileBucket.Label)"
+                                                 YName="@nameof(QuartileBucket.Count)"
+                                                 Type="AccumulationType.Pie" />
+                    </AccumulationChartSeriesCollection>
+                </SfAccumulationChart>
+            </div></div>
+        </div>
+    </div>
+
+    @if (_data.OutOfBand.Count > 0)
+    {
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6">Bant Dışı Çalışanlar (@_data.OutOfBand.Count)</h2>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Sicil</th><th>Ad Soyad</th><th>Departman</th>
+                            <th class="text-end">Brüt</th><th class="text-end">Bant Min</th><th class="text-end">Bant Max</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var o in _data.OutOfBand)
+                        {
+                            <tr>
+                                <td><a href="/calisanlar/@o.Id"><code>@o.EmployeeNumber</code></a></td>
+                                <td>@o.FullName</td>
+                                <td>@o.Department</td>
+                                <td class="text-end">@o.CurrentGross.ToString("N0")</td>
+                                <td class="text-end">@o.BandMin.ToString("N0")</td>
+                                <td class="text-end">@o.BandMax.ToString("N0")</td>
+                                <td>
+                                    @if (o.Flag == "below") { <span class="badge bg-danger">Bant Altı</span> }
+                                    else { <span class="badge bg-warning text-dark">Bant Üstü</span> }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private CompPolicyOverview? _data;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _data = await Metrics.ComputeOverviewAsync();
+    }
+}

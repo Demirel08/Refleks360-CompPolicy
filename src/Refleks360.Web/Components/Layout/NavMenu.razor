@@ -47,6 +47,13 @@
                 </NavLink>
             </div>
         </AuthorizeView>
+        <AuthorizeView Policy="@Permissions.BandView">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/comp-policy">
+                    <span class="bi bi-graph-up" aria-hidden="true"></span> Comp Policy
+                </NavLink>
+            </div>
+        </AuthorizeView>
         <AuthorizeView Policy="@Permissions.UserManage">
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="admin/kullanicilar">
