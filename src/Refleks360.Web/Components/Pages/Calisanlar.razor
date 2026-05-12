@@ -73,6 +73,30 @@ else
                 </Template>
             </GridColumn>
             <GridColumn Field="@nameof(EmployeeListItem.HireDate)"       HeaderText="İşe Giriş"    Width="120" Format="d" Type="ColumnType.Date"></GridColumn>
+            <GridColumn Field="@nameof(EmployeeListItem.CompaRatio)" HeaderText="Compa" Width="100" TextAlign="TextAlign.Right">
+                <Template>
+                    @{
+                        var row = (context as EmployeeListItem)!;
+                        @if (row.CompaRatio.HasValue)
+                        {
+                            <span class="@CompaClass(row.RangeFlag)">@row.CompaRatio.Value.ToString("F2")</span>
+                        }
+                        else { <span class="text-muted">—</span> }
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn Field="@nameof(EmployeeListItem.RangePenetration)" HeaderText="Bant %" Width="100" TextAlign="TextAlign.Right">
+                <Template>
+                    @{
+                        var row = (context as EmployeeListItem)!;
+                        @if (row.RangePenetration.HasValue)
+                        {
+                            <span>@((row.RangePenetration.Value * 100m).ToString("F0"))%</span>
+                        }
+                        else { <span class="text-muted">—</span> }
+                    }
+                </Template>
+            </GridColumn>
         </GridColumns>
     </SfGrid>
 }
@@ -121,6 +145,14 @@ else
         EmployeeStatus.Active => "badge bg-success",
         EmployeeStatus.OnLeave => "badge bg-warning text-dark",
         EmployeeStatus.Terminated => "badge bg-secondary",
+        _ => "badge bg-light text-dark",
+    };
+
+    private static string CompaClass(string? flag) => flag switch
+    {
+        "below" => "badge bg-danger",
+        "above" => "badge bg-warning text-dark",
+        "in" => "badge bg-success",
         _ => "badge bg-light text-dark",
     };
 }

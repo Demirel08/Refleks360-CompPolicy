@@ -1,0 +1,193 @@
+@page "/admin/bantlar"
+@attribute [Authorize(Policy = Permissions.BandEdit)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Organization
+@using Refleks360.Domain.Security
+@inject ISalaryBandService Bands
+@inject IOrganizationLookupService Lookup
+
+<PageTitle>Maaş Bantları</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <h1>Maaş Bantları</h1>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h2 class="h6">Bant Asistanı (ilk bandı gir → kalanlar üretilsin)</h2>
+        <div class="row g-2">
+            <div class="col-md-2">
+                <label class="form-label small">İlk kademe</label>
+                <select class="form-select" @bind="_wzGradeId">
+                    <option value="0">— seç —</option>
+                    @foreach (var g in _grades) { <option value="@g.Id">@g.Name</option> }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Min</label>
+                <input type="number" class="form-control" @bind="_wzMin" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Mid</label>
+                <input type="number" class="form-control" @bind="_wzMid" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Max</label>
+                <input type="number" class="form-control" @bind="_wzMax" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Mid Progression %</label>
+                <input type="number" step="0.5" class="form-control" @bind="_wzProgression" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Geçerlilik</label>
+                <input type="date" class="form-control" @bind="_wzEffective" />
+            </div>
+        </div>
+        <div class="mt-2">
+            <button class="btn btn-primary btn-sm" @onclick="RunWizard">Bantları Üret</button>
+            @if (_wzResult is not null) { <span class="text-success ms-3">@_wzResult</span> }
+            @if (_error is not null) { <span class="text-danger ms-3">@_error</span> }
+        </div>
+    </div>
+</div>
+
+@if (_bands is null) { <p>Yükleniyor...</p> }
+else
+{
+    <table class="table table-sm align-middle">
+        <thead><tr><th>Kademe</th><th>Lokasyon</th><th class="text-end">Min</th><th class="text-end">Mid</th><th class="text-end">Max</th><th class="text-end">Spread %</th><th>Geçerlilik</th><th>Bitiş</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var b in _bands)
+            {
+                <tr>
+                    <td><strong>@b.JobGradeCode</strong></td>
+                    <td>@(b.LocationName ?? "—")</td>
+                    <td class="text-end">@b.Min.ToString("N0")</td>
+                    <td class="text-end fw-bold">@b.Mid.ToString("N0")</td>
+                    <td class="text-end">@b.Max.ToString("N0")</td>
+                    <td class="text-end">@b.RangeSpreadPercent</td>
+                    <td>@b.EffectiveDate.ToString("dd.MM.yyyy")</td>
+                    <td>@(b.EndDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                    <td>
+                        <button class="btn btn-link btn-sm p-0" @onclick="@(() => StartEdit(b))">düzenle</button>
+                        <button class="btn btn-link btn-sm p-0 text-danger ms-2" @onclick="@(() => Delete(b.Id))">sil</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="card">
+        <div class="card-body">
+            <h2 class="h6">@(_form.Id is null ? "Yeni Bant" : "Düzenle")</h2>
+            <div class="row g-2">
+                <div class="col-md-2">
+                    <label class="form-label small">Kademe</label>
+                    <select class="form-select" @bind="_form.JobGradeId">
+                        <option value="0">— seç —</option>
+                        @foreach (var g in _grades) { <option value="@g.Id">@g.Name</option> }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Lokasyon</label>
+                    <select class="form-select" @bind="_form.LocationId">
+                        <option value="0">— tüm lokasyon —</option>
+                        @foreach (var l in _locations) { <option value="@l.Id">@l.Name</option> }
+                    </select>
+                </div>
+                <div class="col-md-1"><label class="form-label small">Min</label><input type="number" class="form-control" @bind="_form.Min" /></div>
+                <div class="col-md-1"><label class="form-label small">Mid</label><input type="number" class="form-control" @bind="_form.Mid" /></div>
+                <div class="col-md-1"><label class="form-label small">Max</label><input type="number" class="form-control" @bind="_form.Max" /></div>
+                <div class="col-md-2"><label class="form-label small">Geçerlilik</label><input type="date" class="form-control" @bind="_form.EffectiveDate" /></div>
+                <div class="col-md-2"><label class="form-label small">Bitiş</label><input type="date" class="form-control" @bind="_form.EndDate" /></div>
+            </div>
+            <div class="mt-2 d-flex gap-2">
+                <button class="btn btn-primary btn-sm" @onclick="Save">Kaydet</button>
+                @if (_form.Id is not null) { <button class="btn btn-secondary btn-sm" @onclick="@(() => _form = new())">Vazgeç</button> }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<SalaryBandDto>? _bands;
+    private IReadOnlyList<LookupItem> _grades = Array.Empty<LookupItem>();
+    private IReadOnlyList<LookupItem> _locations = Array.Empty<LookupItem>();
+    private string? _error;
+    private string? _wzResult;
+
+    private int _wzGradeId;
+    private decimal _wzMin = 40_000, _wzMid = 50_000, _wzMax = 60_000;
+    private decimal _wzProgression = 30m;
+    private DateTime _wzEffective = DateTime.Today;
+
+    private Form _form = new() { EffectiveDate = DateTime.Today };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _grades = await Lookup.GetJobGradesAsync();
+        _locations = await Lookup.GetLocationsAsync();
+        await Reload();
+    }
+
+    private async Task Reload() => _bands = await Bands.GetAllAsync();
+
+    private async Task RunWizard()
+    {
+        _error = null; _wzResult = null;
+        try
+        {
+            var n = await Bands.AutoGenerateAsync(_wzGradeId, _wzMin, _wzMid, _wzMax, _wzProgression, DateOnly.FromDateTime(_wzEffective));
+            _wzResult = $"{n} kademenin bantı üretildi.";
+            await Reload();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private void StartEdit(SalaryBandDto b)
+    {
+        _form = new Form
+        {
+            Id = b.Id, JobGradeId = b.JobGradeId, LocationId = b.LocationId ?? 0,
+            Min = b.Min, Mid = b.Mid, Max = b.Max,
+            EffectiveDate = b.EffectiveDate.ToDateTime(TimeOnly.MinValue),
+            EndDate = b.EndDate?.ToDateTime(TimeOnly.MinValue),
+        };
+    }
+
+    private async Task Save()
+    {
+        _error = null;
+        try
+        {
+            await Bands.UpsertAsync(_form.Id, _form.JobGradeId,
+                _form.LocationId == 0 ? null : _form.LocationId,
+                _form.Min, _form.Mid, _form.Max,
+                DateOnly.FromDateTime(_form.EffectiveDate),
+                _form.EndDate.HasValue ? DateOnly.FromDateTime(_form.EndDate.Value) : null);
+            _form = new Form { EffectiveDate = DateTime.Today };
+            await Reload();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task Delete(int id)
+    {
+        try { await Bands.DeleteAsync(id); await Reload(); }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private sealed class Form
+    {
+        public int? Id { get; set; }
+        public int JobGradeId { get; set; }
+        public int LocationId { get; set; }
+        public decimal Min { get; set; }
+        public decimal Mid { get; set; }
+        public decimal Max { get; set; }
+        public DateTime EffectiveDate { get; set; }
+        public DateTime? EndDate { get; set; }
+    }
+}

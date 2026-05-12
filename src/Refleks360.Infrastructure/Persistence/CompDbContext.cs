@@ -25,6 +25,8 @@ public sealed class CompDbContext(DbContextOptions<CompDbContext> options)
     public DbSet<JobGradeEntity> JobGrades => Set<JobGradeEntity>();
     public DbSet<PositionEntity> Positions => Set<PositionEntity>();
     public DbSet<EmployeeEntity> Employees => Set<EmployeeEntity>();
+    public DbSet<SalaryBandEntity> SalaryBands => Set<SalaryBandEntity>();
+    public DbSet<EmployeeSalaryEntity> EmployeeSalaries => Set<EmployeeSalaryEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,6 +43,7 @@ public sealed class CompDbContext(DbContextOptions<CompDbContext> options)
 
         TaxParameters2026Seed.Apply(modelBuilder);
         OrganizationSeed.Apply(modelBuilder);
+        SalarySeed.Apply(modelBuilder);
     }
 
     private static void ConfigureTaxSchema(ModelBuilder modelBuilder)
@@ -219,6 +222,31 @@ public sealed class CompDbContext(DbContextOptions<CompDbContext> options)
 
             // Soft delete: IsDeleted=false olanlar default sorgularda görünür.
             b.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        modelBuilder.Entity<SalaryBandEntity>(b =>
+        {
+            b.ToTable("SalaryBands");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.Min).HasColumnType("decimal(18,2)");
+            b.Property(e => e.Mid).HasColumnType("decimal(18,2)");
+            b.Property(e => e.Max).HasColumnType("decimal(18,2)");
+            b.HasOne(e => e.JobGrade).WithMany().HasForeignKey(e => e.JobGradeId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(e => e.Location).WithMany().HasForeignKey(e => e.LocationId).OnDelete(DeleteBehavior.SetNull);
+            b.HasIndex(e => new { e.JobGradeId, e.LocationId, e.EffectiveDate });
+        });
+
+        modelBuilder.Entity<EmployeeSalaryEntity>(b =>
+        {
+            b.ToTable("EmployeeSalaries");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.GrossMonthly).HasColumnType("decimal(18,2)");
+            b.Property(e => e.NetMonthlyCached).HasColumnType("decimal(18,2)");
+            b.Property(e => e.EmployerCostCached).HasColumnType("decimal(18,2)");
+            b.Property(e => e.ChangePercent).HasColumnType("decimal(8,4)");
+            b.Property(e => e.ChangeAmount).HasColumnType("decimal(18,2)");
+            b.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(e => new { e.EmployeeId, e.EffectiveDate });
         });
     }
 }

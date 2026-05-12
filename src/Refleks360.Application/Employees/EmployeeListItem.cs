@@ -16,4 +16,8 @@ public sealed record EmployeeListItem(
     string LocationCity,
     EmployeeStatus Status,
     Gender Gender,
-    DateOnly HireDate);
+    DateOnly HireDate,
+    decimal? CurrentGross,
+    decimal? CompaRatio,
+    decimal? RangePenetration,
+    string? RangeFlag); // "below", "in", "above", null = bant yok
