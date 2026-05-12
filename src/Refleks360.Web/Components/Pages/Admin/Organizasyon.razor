@@ -1,0 +1,445 @@
+@page "/admin/organizasyon"
+@attribute [Authorize(Policy = Permissions.OrgEdit)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Organization
+@using Refleks360.Domain.Organization
+@using Refleks360.Domain.Security
+@inject IOrganizationAdminService Org
+@inject IOrganizationLookupService Lookup
+
+<PageTitle>Organizasyon Yönetimi</PageTitle>
+
+<h1 class="mb-3">Organizasyon Yönetimi</h1>
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><button type="button" class="nav-link @(Tab == "dept" ? "active" : "")" @onclick='() => Tab = "dept"'>Departmanlar</button></li>
+    <li class="nav-item"><button type="button" class="nav-link @(Tab == "pos" ? "active" : "")"  @onclick='() => Tab = "pos"'>Pozisyonlar</button></li>
+    <li class="nav-item"><button type="button" class="nav-link @(Tab == "loc" ? "active" : "")"  @onclick='() => Tab = "loc"'>Lokasyonlar</button></li>
+    <li class="nav-item"><button type="button" class="nav-link @(Tab == "grade" ? "active" : "")" @onclick='() => Tab = "grade"'>Kademeler</button></li>
+    <li class="nav-item"><button type="button" class="nav-link @(Tab == "family" ? "active" : "")" @onclick='() => Tab = "family"'>İş Aileleri</button></li>
+</ul>
+
+@if (Tab == "dept") { @DepartmentsTab }
+@if (Tab == "pos")  { @PositionsTab }
+@if (Tab == "loc")  { @LocationsTab }
+@if (Tab == "grade") { @JobGradesTab }
+@if (Tab == "family") { @JobFamiliesTab }
+
+@if (!string.IsNullOrEmpty(Error))
+{
+    <div class="alert alert-danger mt-3">@Error</div>
+}
+
+@code {
+    private string Tab { get; set; } = "dept";
+    private string? Error;
+
+    private IReadOnlyList<DepartmentDto> _departments = Array.Empty<DepartmentDto>();
+    private IReadOnlyList<PositionDto> _positions = Array.Empty<PositionDto>();
+    private IReadOnlyList<LocationDto> _locations = Array.Empty<LocationDto>();
+    private IReadOnlyList<JobGradeDto> _grades = Array.Empty<JobGradeDto>();
+    private IReadOnlyList<JobFamilyDto> _families = Array.Empty<JobFamilyDto>();
+
+    // Form state'leri her tab için
+    private DeptForm _deptForm = new();
+    private PosForm _posForm = new();
+    private LocForm _locForm = new();
+    private GradeForm _gradeForm = new();
+    private FamilyForm _famForm = new();
+
+    private IReadOnlyList<LookupItem> _parentDeptOptions = Array.Empty<LookupItem>();
+    private IReadOnlyList<LookupItem> _managerOptions = Array.Empty<LookupItem>();
+    private IReadOnlyList<LookupItem> _gradeOptions = Array.Empty<LookupItem>();
+    private IReadOnlyList<LookupItem> _familyOptions = Array.Empty<LookupItem>();
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        _departments = await Org.GetDepartmentsAsync();
+        _positions = await Org.GetPositionsAsync();
+        _locations = await Org.GetLocationsAsync();
+        _grades = await Org.GetJobGradesAsync();
+        _families = await Org.GetJobFamiliesAsync();
+        _parentDeptOptions = _departments.Select(d => new LookupItem(d.Id, d.Name)).ToList();
+        _managerOptions = await Lookup.GetManagerCandidatesAsync(null);
+        _gradeOptions = _grades.Select(g => new LookupItem(g.Id, $"{g.Code} — {g.Name}")).ToList();
+        _familyOptions = _families.Select(f => new LookupItem(f.Id, f.Name)).ToList();
+    }
+
+    // ===================== Departments =====================
+    private RenderFragment DepartmentsTab => @<div>
+        <table class="table table-sm align-middle">
+            <thead><tr><th>Ad</th><th>Üst</th><th>Yönetici</th><th>Maliyet Merk.</th><th class="text-end">Çalışan</th><th>Aktif</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var d in _departments)
+                {
+                    <tr>
+                        <td><strong>@d.Name</strong></td>
+                        <td>@(d.ParentName ?? "—")</td>
+                        <td>@(d.ManagerName ?? "—")</td>
+                        <td>@d.CostCenterCode</td>
+                        <td class="text-end">@d.EmployeeCount</td>
+                        <td>@(d.IsActive ? "✓" : "—")</td>
+                        <td>
+                            <button class="btn btn-link btn-sm p-0" @onclick="@(() => StartEditDept(d))">düzenle</button>
+                            <button class="btn btn-link btn-sm p-0 text-danger ms-2" @onclick="@(() => DeleteDept(d.Id))">sil</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6">@(_deptForm.Id is null ? "Yeni Departman" : "Düzenle: " + _deptForm.Name)</h2>
+                <div class="row g-2">
+                    <div class="col-md-3"><input class="form-control" placeholder="Ad" @bind="_deptForm.Name" /></div>
+                    <div class="col-md-3">
+                        <select class="form-select" @bind="_deptForm.ParentDepartmentId">
+                            <option value="0">— üst yok —</option>
+                            @foreach (var p in _parentDeptOptions.Where(x => x.Id != _deptForm.Id))
+                            { <option value="@p.Id">@p.Name</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" @bind="_deptForm.ManagerEmployeeId">
+                            <option value="0">— yönetici yok —</option>
+                            @foreach (var m in _managerOptions) { <option value="@m.Id">@m.Name</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-2"><input class="form-control" placeholder="Maliyet merk." @bind="_deptForm.CostCenterCode" /></div>
+                    <div class="col-md-1 form-check pt-2">
+                        <input type="checkbox" id="dactive" class="form-check-input" @bind="_deptForm.IsActive" />
+                        <label class="form-check-label small" for="dactive">Aktif</label>
+                    </div>
+                </div>
+                <div class="mt-2 d-flex gap-2">
+                    <button class="btn btn-primary btn-sm" @onclick="SaveDept">Kaydet</button>
+                    @if (_deptForm.Id is not null)
+                    { <button class="btn btn-secondary btn-sm" @onclick="@(() => _deptForm = new())">Vazgeç</button> }
+                </div>
+            </div>
+        </div>
+    </div>;
+
+    private void StartEditDept(DepartmentDto d)
+    {
+        _deptForm = new DeptForm
+        {
+            Id = d.Id, Name = d.Name,
+            ParentDepartmentId = d.ParentDepartmentId ?? 0,
+            ManagerEmployeeId = d.ManagerEmployeeId ?? 0,
+            CostCenterCode = d.CostCenterCode, IsActive = d.IsActive,
+        };
+    }
+
+    private async Task SaveDept()
+    {
+        Error = null;
+        try
+        {
+            await Org.UpsertDepartmentAsync(
+                _deptForm.Id,
+                _deptForm.Name,
+                _deptForm.ParentDepartmentId == 0 ? null : _deptForm.ParentDepartmentId,
+                _deptForm.ManagerEmployeeId == 0 ? null : _deptForm.ManagerEmployeeId,
+                _deptForm.CostCenterCode, _deptForm.IsActive);
+            _deptForm = new DeptForm();
+            await Reload();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task DeleteDept(int id)
+    {
+        Error = null;
+        try { await Org.DeleteDepartmentAsync(id); await Reload(); }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    // ===================== Positions =====================
+    private RenderFragment PositionsTab => @<div>
+        <table class="table table-sm align-middle">
+            <thead><tr><th>Başlık</th><th>Kademe</th><th>Aile</th><th>Benchmark</th><th class="text-end">Çalışan</th><th>Aktif</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var p in _positions)
+                {
+                    <tr>
+                        <td><strong>@p.Title</strong></td>
+                        <td><span class="badge bg-secondary">@p.JobGradeCode</span></td>
+                        <td>@p.JobFamilyName</td>
+                        <td>@p.BenchmarkMatchName</td>
+                        <td class="text-end">@p.EmployeeCount</td>
+                        <td>@(p.IsActive ? "✓" : "—")</td>
+                        <td>
+                            <button class="btn btn-link btn-sm p-0" @onclick="@(() => StartEditPos(p))">düzenle</button>
+                            <button class="btn btn-link btn-sm p-0 text-danger ms-2" @onclick="@(() => DeletePos(p.Id))">sil</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6">@(_posForm.Id is null ? "Yeni Pozisyon" : "Düzenle: " + _posForm.Title)</h2>
+                <div class="row g-2">
+                    <div class="col-md-4"><input class="form-control" placeholder="Başlık" @bind="_posForm.Title" /></div>
+                    <div class="col-md-2">
+                        <select class="form-select" @bind="_posForm.JobGradeId">
+                            <option value="0">— kademe —</option>
+                            @foreach (var g in _gradeOptions) { <option value="@g.Id">@g.Name</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" @bind="_posForm.JobFamilyId">
+                            <option value="0">— aile —</option>
+                            @foreach (var f in _familyOptions) { <option value="@f.Id">@f.Name</option> }
+                        </select>
+                    </div>
+                    <div class="col-md-3"><input class="form-control" placeholder="Benchmark adı" @bind="_posForm.BenchmarkMatchName" /></div>
+                    <div class="col-md-1 form-check pt-2">
+                        <input type="checkbox" id="pactive" class="form-check-input" @bind="_posForm.IsActive" />
+                        <label class="form-check-label small" for="pactive">Aktif</label>
+                    </div>
+                </div>
+                <div class="mt-2 d-flex gap-2">
+                    <button class="btn btn-primary btn-sm" @onclick="SavePos">Kaydet</button>
+                    @if (_posForm.Id is not null) { <button class="btn btn-secondary btn-sm" @onclick="@(() => _posForm = new())">Vazgeç</button> }
+                </div>
+            </div>
+        </div>
+    </div>;
+
+    private void StartEditPos(PositionDto p)
+    {
+        _posForm = new PosForm
+        {
+            Id = p.Id, Title = p.Title, JobGradeId = p.JobGradeId, JobFamilyId = p.JobFamilyId,
+            BenchmarkMatchName = p.BenchmarkMatchName, IsActive = p.IsActive,
+        };
+    }
+
+    private async Task SavePos()
+    {
+        Error = null;
+        try
+        {
+            await Org.UpsertPositionAsync(_posForm.Id, _posForm.Title, _posForm.JobGradeId, _posForm.JobFamilyId, _posForm.BenchmarkMatchName, _posForm.IsActive);
+            _posForm = new PosForm();
+            await Reload();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task DeletePos(int id) { try { await Org.DeletePositionAsync(id); await Reload(); } catch (Exception ex) { Error = ex.Message; } }
+
+    // ===================== Locations =====================
+    private RenderFragment LocationsTab => @<div>
+        <table class="table table-sm align-middle">
+            <thead><tr><th>Ad</th><th>Şehir</th><th>Ülke</th><th class="text-end">Bölge Endeksi</th><th class="text-end">Çalışan</th><th>Aktif</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var l in _locations)
+                {
+                    <tr>
+                        <td><strong>@l.Name</strong></td>
+                        <td>@l.City</td>
+                        <td>@l.Country</td>
+                        <td class="text-end">@l.RegionalIndexPercent.ToString("F0")</td>
+                        <td class="text-end">@l.EmployeeCount</td>
+                        <td>@(l.IsActive ? "✓" : "—")</td>
+                        <td>
+                            <button class="btn btn-link btn-sm p-0" @onclick="@(() => StartEditLoc(l))">düzenle</button>
+                            <button class="btn btn-link btn-sm p-0 text-danger ms-2" @onclick="@(() => DeleteLoc(l.Id))">sil</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6">@(_locForm.Id is null ? "Yeni Lokasyon" : "Düzenle: " + _locForm.Name)</h2>
+                <div class="row g-2">
+                    <div class="col-md-3"><input class="form-control" placeholder="Ad" @bind="_locForm.Name" /></div>
+                    <div class="col-md-2"><input class="form-control" placeholder="Şehir" @bind="_locForm.City" /></div>
+                    <div class="col-md-2"><input class="form-control" placeholder="Ülke" @bind="_locForm.Country" /></div>
+                    <div class="col-md-2"><input type="number" step="1" class="form-control" placeholder="Endeks %" @bind="_locForm.RegionalIndexPercent" /></div>
+                    <div class="col-md-2 form-check pt-2">
+                        <input type="checkbox" id="lactive" class="form-check-input" @bind="_locForm.IsActive" />
+                        <label class="form-check-label small" for="lactive">Aktif</label>
+                    </div>
+                </div>
+                <div class="mt-2 d-flex gap-2">
+                    <button class="btn btn-primary btn-sm" @onclick="SaveLoc">Kaydet</button>
+                    @if (_locForm.Id is not null) { <button class="btn btn-secondary btn-sm" @onclick="@(() => _locForm = new())">Vazgeç</button> }
+                </div>
+            </div>
+        </div>
+    </div>;
+
+    private void StartEditLoc(LocationDto l)
+    {
+        _locForm = new LocForm { Id = l.Id, Name = l.Name, City = l.City, Country = l.Country, RegionalIndexPercent = l.RegionalIndexPercent, IsActive = l.IsActive };
+    }
+
+    private async Task SaveLoc()
+    {
+        Error = null;
+        try { await Org.UpsertLocationAsync(_locForm.Id, _locForm.Name, _locForm.City, _locForm.Country, _locForm.RegionalIndexPercent, _locForm.IsActive); _locForm = new LocForm(); await Reload(); }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task DeleteLoc(int id) { try { await Org.DeleteLocationAsync(id); await Reload(); } catch (Exception ex) { Error = ex.Message; } }
+
+    // ===================== JobGrades =====================
+    private RenderFragment JobGradesTab => @<div>
+        <table class="table table-sm align-middle">
+            <thead><tr><th>Kod</th><th>Ad</th><th>Bant</th><th>Sıra</th><th>Skor Min</th><th>Skor Max</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var g in _grades)
+                {
+                    <tr>
+                        <td><strong>@g.Code</strong></td>
+                        <td>@g.Name</td>
+                        <td>@g.CareerBand</td>
+                        <td>@g.OrderIndex</td>
+                        <td>@g.EvaluationScoreMin</td>
+                        <td>@g.EvaluationScoreMax</td>
+                        <td>
+                            <button class="btn btn-link btn-sm p-0" @onclick="@(() => StartEditGrade(g))">düzenle</button>
+                            <button class="btn btn-link btn-sm p-0 text-danger ms-2" @onclick="@(() => DeleteGrade(g.Id))">sil</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6">@(_gradeForm.Id is null ? "Yeni Kademe" : "Düzenle: " + _gradeForm.Code)</h2>
+                <div class="row g-2">
+                    <div class="col-md-1"><input class="form-control" placeholder="Kod" @bind="_gradeForm.Code" /></div>
+                    <div class="col-md-3"><input class="form-control" placeholder="Ad" @bind="_gradeForm.Name" /></div>
+                    <div class="col-md-2">
+                        <select class="form-select" @bind="_gradeForm.CareerBand">
+                            <option value="@CareerBand.Entry">Entry</option>
+                            <option value="@CareerBand.Professional">Professional</option>
+                            <option value="@CareerBand.Manager">Manager</option>
+                            <option value="@CareerBand.Director">Director</option>
+                            <option value="@CareerBand.Executive">Executive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1"><input type="number" class="form-control" @bind="_gradeForm.OrderIndex" /></div>
+                    <div class="col-md-2"><input type="number" class="form-control" placeholder="Skor min" @bind="_gradeForm.EvaluationScoreMin" /></div>
+                    <div class="col-md-2"><input type="number" class="form-control" placeholder="Skor max" @bind="_gradeForm.EvaluationScoreMax" /></div>
+                </div>
+                <div class="mt-2 d-flex gap-2">
+                    <button class="btn btn-primary btn-sm" @onclick="SaveGrade">Kaydet</button>
+                    @if (_gradeForm.Id is not null) { <button class="btn btn-secondary btn-sm" @onclick="@(() => _gradeForm = new())">Vazgeç</button> }
+                </div>
+            </div>
+        </div>
+    </div>;
+
+    private void StartEditGrade(JobGradeDto g)
+    {
+        _gradeForm = new GradeForm { Id = g.Id, Code = g.Code, Name = g.Name, CareerBand = g.CareerBand, OrderIndex = g.OrderIndex, EvaluationScoreMin = g.EvaluationScoreMin, EvaluationScoreMax = g.EvaluationScoreMax };
+    }
+
+    private async Task SaveGrade()
+    {
+        Error = null;
+        try { await Org.UpsertJobGradeAsync(_gradeForm.Id, _gradeForm.Code, _gradeForm.Name, _gradeForm.CareerBand, _gradeForm.OrderIndex, _gradeForm.EvaluationScoreMin, _gradeForm.EvaluationScoreMax); _gradeForm = new GradeForm(); await Reload(); }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task DeleteGrade(int id) { try { await Org.DeleteJobGradeAsync(id); await Reload(); } catch (Exception ex) { Error = ex.Message; } }
+
+    // ===================== JobFamilies =====================
+    private RenderFragment JobFamiliesTab => @<div>
+        <table class="table table-sm align-middle">
+            <thead><tr><th>Ad</th><th>Açıklama</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var f in _families)
+                {
+                    <tr>
+                        <td><strong>@f.Name</strong></td>
+                        <td>@f.Description</td>
+                        <td>
+                            <button class="btn btn-link btn-sm p-0" @onclick="@(() => StartEditFamily(f))">düzenle</button>
+                            <button class="btn btn-link btn-sm p-0 text-danger ms-2" @onclick="@(() => DeleteFamily(f.Id))">sil</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6">@(_famForm.Id is null ? "Yeni İş Ailesi" : "Düzenle: " + _famForm.Name)</h2>
+                <div class="row g-2">
+                    <div class="col-md-3"><input class="form-control" placeholder="Ad" @bind="_famForm.Name" /></div>
+                    <div class="col-md-9"><input class="form-control" placeholder="Açıklama" @bind="_famForm.Description" /></div>
+                </div>
+                <div class="mt-2 d-flex gap-2">
+                    <button class="btn btn-primary btn-sm" @onclick="SaveFamily">Kaydet</button>
+                    @if (_famForm.Id is not null) { <button class="btn btn-secondary btn-sm" @onclick="@(() => _famForm = new())">Vazgeç</button> }
+                </div>
+            </div>
+        </div>
+    </div>;
+
+    private void StartEditFamily(JobFamilyDto f) { _famForm = new FamilyForm { Id = f.Id, Name = f.Name, Description = f.Description }; }
+
+    private async Task SaveFamily()
+    {
+        Error = null;
+        try { await Org.UpsertJobFamilyAsync(_famForm.Id, _famForm.Name, _famForm.Description); _famForm = new FamilyForm(); await Reload(); }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task DeleteFamily(int id) { try { await Org.DeleteJobFamilyAsync(id); await Reload(); } catch (Exception ex) { Error = ex.Message; } }
+
+    // ---- Form modelleri ----
+    private sealed class DeptForm
+    {
+        public int? Id { get; set; }
+        public string Name { get; set; } = "";
+        public int ParentDepartmentId { get; set; }
+        public int ManagerEmployeeId { get; set; }
+        public string? CostCenterCode { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+    private sealed class PosForm
+    {
+        public int? Id { get; set; }
+        public string Title { get; set; } = "";
+        public int JobGradeId { get; set; }
+        public int JobFamilyId { get; set; }
+        public string? BenchmarkMatchName { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+    private sealed class LocForm
+    {
+        public int? Id { get; set; }
+        public string Name { get; set; } = "";
+        public string City { get; set; } = "";
+        public string Country { get; set; } = "Türkiye";
+        public decimal RegionalIndexPercent { get; set; } = 100m;
+        public bool IsActive { get; set; } = true;
+    }
+    private sealed class GradeForm
+    {
+        public int? Id { get; set; }
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+        public CareerBand CareerBand { get; set; } = CareerBand.Professional;
+        public int OrderIndex { get; set; }
+        public int? EvaluationScoreMin { get; set; }
+        public int? EvaluationScoreMax { get; set; }
+    }
+    private sealed class FamilyForm
+    {
+        public int? Id { get; set; }
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+    }
+}
