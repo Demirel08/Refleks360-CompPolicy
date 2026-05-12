@@ -207,18 +207,20 @@ Refleks360.CompPolicy.sln
 
 ---
 
-### Hafta 3 — EF Core + İlk Migration + Tax Tabloları (05-18 → 05-24)
+### Hafta 3 — EF Core + İlk Migration + Tax Tabloları (05-18 → 05-24) ✅
 
 **Hedef**: Veritabanı kuruldu, vergi parametreleri DB'den okunuyor.
 
-- [ ] `Infrastructure/CompDbContext.cs`
-- [ ] Entity'ler: `TaxParameter`, `IncomeTaxBracket`, `MonthlyTaxPeriod`
-- [ ] İlk EF Core migration: `InitialCreate`
-- [ ] Seed data: 2026 vergi parametreleri ([05-HESAPLAMA-MOTORU.md](05-HESAPLAMA-MOTORU.md)'den)
-- [ ] `Application/Services/TaxParameterService.cs` — DB'den oku, `IMemoryCache`
-- [ ] Hesap motoru artık DB parametrelerini kullanıyor (sabit yerine)
+- [x] `Infrastructure/Persistence/CompDbContext.cs`
+- [x] Entity'ler: `TaxYearEntity`, `IncomeTaxBracketEntity`, `MonthlyTaxPeriodEntity` (decimal(18,2)/decimal(8,6) kolonlar, FK + unique index'ler, sentinel sonsuzluk değeri)
+- [x] İlk EF Core migration: `20260512190845_InitialCreate` — `Refleks360_Dev`'e uygulandı (`dotnet ef database update`)
+- [x] Seed data (HasData): 2026 vergi parametreleri — 1 yıl + 5 dilim + 12 aylık dönem (1-7. ay %15, 8-12. ay %20 GV istisnası)
+- [x] `Application/Abstractions/ITaxParameterService.cs` + `Application/Calculations/YearTaxData.cs` (DTO record)
+- [x] `Infrastructure/Services/TaxParameterService.cs` — `CompDbContext` + `IMemoryCache` (12h TTL), Domain record'larına dönüşüm
+- [x] `Infrastructure/DependencyInjection.AddRefleks360Infrastructure()` extension + Program.cs DI
+- [x] `/hesaplama` sayfası artık DB parametrelerini kullanıyor (önceki sabit kod kaldırıldı)
 
-**Çıktı**: `dotnet ef database update` ile DB oluşuyor, vergi tabloları dolu. Test aynı şekilde geçiyor.
+**Çıktı**: `dotnet ef database update` ile DB oluşuyor, vergi tabloları dolu (sqlcmd ile doğrulandı: 1 TaxYear + 5 Bracket + 12 Period). Test toplamı **75/75 yeşil** (73 Domain + 2 placeholder). `/hesaplama` sayfası tarayıcıda DB'den okuyarak doğru çalışıyor (asgari ücret → 28.075,50 ₺).
 
 ---
 

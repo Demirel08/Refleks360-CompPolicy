@@ -1,3 +1,4 @@
+using Refleks360.Infrastructure;
 using Refleks360.Web.Components;
 using Syncfusion.Blazor;
 
@@ -13,6 +14,9 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddSyncfusionBlazor();
+
+builder.Services.AddMemoryCache();
+builder.Services.AddRefleks360Infrastructure(builder.Configuration);
 
 var app = builder.Build();
 

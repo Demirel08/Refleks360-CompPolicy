@@ -1,176 +1,177 @@
 @page "/hesaplama"
 @rendermode InteractiveServer
 @using System.Globalization
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Calculations
 @using Refleks360.Domain.Calculations
+@inject ITaxParameterService TaxParameters
 
-<PageTitle>Maaş Hesaplama (Demo)</PageTitle>
+<PageTitle>Maaş Hesaplama</PageTitle>
 
-<h1>Maaş Hesaplama — 2026 Parametreleri</h1>
+<h1>Maaş Hesaplama — @(_yearData?.Year.ToString() ?? "...")</h1>
 
-<p class="text-muted">
-    Aşağıya aylık brütünü gir, hesap motoru anında net, kesintiler ve işveren
-    maliyetini gösterir. <strong>Hafta 2 çıktısının canlı testidir.</strong>
-    Parametreler şu an kod içinden okunur; Hafta 3'te veritabanından gelecek.
-</p>
-
-<div class="row g-3 align-items-end mb-4">
-    <div class="col-md-3">
-        <label class="form-label" for="gross-input">Aylık brüt (TL)</label>
-        <input id="gross-input"
-               type="number"
-               class="form-control"
-               min="0"
-               step="100"
-               @bind="@_gross"
-               @bind:event="oninput" />
-    </div>
-
-    <div class="col-md-3">
-        <label class="form-label" for="month-select">Ay</label>
-        <select id="month-select" class="form-select" @bind="@_month">
-            @for (int m = 1; m <= 12; m++)
-            {
-                <option value="@m">@MonthName(m) (@m)</option>
-            }
-        </select>
-    </div>
-
-    <div class="col-md-3">
-        <label class="form-label" for="cum-input">Yıl başından bu aya kadar matrah (TL)</label>
-        <input id="cum-input"
-               type="number"
-               class="form-control"
-               min="0"
-               step="1000"
-               @bind="@_cumulativeBefore"
-               @bind:event="oninput" />
-        <small class="text-muted">Ocak için 0. Diğer aylarda önceki ayların matrah toplamı.</small>
-    </div>
-
-    <div class="col-md-3 form-check ms-2">
-        <input id="discount-check"
-               type="checkbox"
-               class="form-check-input"
-               @bind="@_applyDiscount" />
-        <label class="form-check-label" for="discount-check">SGK işveren teşviki (%5 indirim)</label>
-    </div>
-</div>
-
-@if (_gross > 0)
+@if (_loadError is not null)
 {
-    var result = Calculate();
-
-    <h2 class="h5">Sonuç</h2>
-    <table class="table table-striped table-bordered" style="max-width: 640px;">
-        <tbody>
-            <tr>
-                <th scope="row">PEK (SGK matrahı)</th>
-                <td class="text-end">@Fmt(result.Pek)</td>
-            </tr>
-            <tr>
-                <th scope="row">İşçi kesintileri (SGK %14 + işsizlik %1)</th>
-                <td class="text-end">@Fmt(result.EmployeeContribution)</td>
-            </tr>
-            <tr>
-                <th scope="row">Aylık vergi matrahı</th>
-                <td class="text-end">@Fmt(result.MonthlyTaxBase)</td>
-            </tr>
-            <tr>
-                <th scope="row">Gelir vergisi (ham)</th>
-                <td class="text-end">@Fmt(result.IncomeTaxRaw)</td>
-            </tr>
-            <tr>
-                <th scope="row">Asgari ücret GV istisnası</th>
-                <td class="text-end">−@Fmt(result.IncomeTaxExemption)</td>
-            </tr>
-            <tr>
-                <th scope="row">Ödenecek gelir vergisi</th>
-                <td class="text-end">@Fmt(result.IncomeTax)</td>
-            </tr>
-            <tr>
-                <th scope="row">Damga vergisi (istisna sonrası)</th>
-                <td class="text-end">@Fmt(result.StampTax)</td>
-            </tr>
-            <tr class="table-success">
-                <th scope="row">NET</th>
-                <td class="text-end fw-bold">@Fmt(result.Net)</td>
-            </tr>
-            <tr class="table-warning">
-                <th scope="row">İşveren toplam yükü</th>
-                <td class="text-end fw-bold">@Fmt(result.EmployerCost)</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <p class="text-muted small">
-        Gelir vergisi dilim oranı (bu ay): %@((int)(_periodForMonth(_month).GvExemptionRate * 100m)).
-        Asgari ücret 33.030 TL'nin altındaki brütler SGK tabanına yükselir (PEK clip).
-    </p>
+    <div class="alert alert-danger">
+        <strong>Vergi parametreleri yüklenemedi:</strong> @_loadError
+    </div>
+}
+else if (_yearData is null)
+{
+    <p><em>Yükleniyor...</em></p>
 }
 else
 {
-    <p class="text-muted"><em>Brüt değer girince sonuç burada görünür.</em></p>
+    <p class="text-muted">
+        Aylık brütünü gir, hesap motoru anında net, kesintiler ve işveren maliyetini
+        gösterir. <strong>Parametreler artık <code>Refleks360_Dev</code> veritabanından
+        okunuyor</strong> (Hafta 3 çıktısı; <code>TaxParameterService</code> +
+        <code>IMemoryCache</code>).
+    </p>
+
+    <div class="row g-3 align-items-end mb-4">
+        <div class="col-md-3">
+            <label class="form-label" for="gross-input">Aylık brüt (TL)</label>
+            <input id="gross-input"
+                   type="number"
+                   class="form-control"
+                   min="0"
+                   step="100"
+                   @bind="@_gross"
+                   @bind:event="oninput" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label" for="month-select">Ay</label>
+            <select id="month-select" class="form-select" @bind="@_month">
+                @for (int m = 1; m <= 12; m++)
+                {
+                    <option value="@m">@MonthName(m) (@m)</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label" for="cum-input">Yıl başından bu aya kadar matrah (TL)</label>
+            <input id="cum-input"
+                   type="number"
+                   class="form-control"
+                   min="0"
+                   step="1000"
+                   @bind="@_cumulativeBefore"
+                   @bind:event="oninput" />
+            <small class="text-muted">Ocak için 0. Diğer aylarda önceki ayların matrah toplamı.</small>
+        </div>
+
+        <div class="col-md-3 form-check ms-2">
+            <input id="discount-check"
+                   type="checkbox"
+                   class="form-check-input"
+                   @bind="@_applyDiscount" />
+            <label class="form-check-label" for="discount-check">SGK işveren teşviki (%5 indirim)</label>
+        </div>
+    </div>
+
+    @if (_gross > 0)
+    {
+        var result = Calculate();
+
+        <h2 class="h5">Sonuç</h2>
+        <table class="table table-striped table-bordered" style="max-width: 640px;">
+            <tbody>
+                <tr>
+                    <th scope="row">PEK (SGK matrahı)</th>
+                    <td class="text-end">@Fmt(result.Pek)</td>
+                </tr>
+                <tr>
+                    <th scope="row">İşçi kesintileri (SGK %14 + işsizlik %1)</th>
+                    <td class="text-end">@Fmt(result.EmployeeContribution)</td>
+                </tr>
+                <tr>
+                    <th scope="row">Aylık vergi matrahı</th>
+                    <td class="text-end">@Fmt(result.MonthlyTaxBase)</td>
+                </tr>
+                <tr>
+                    <th scope="row">Gelir vergisi (ham)</th>
+                    <td class="text-end">@Fmt(result.IncomeTaxRaw)</td>
+                </tr>
+                <tr>
+                    <th scope="row">Asgari ücret GV istisnası</th>
+                    <td class="text-end">−@Fmt(result.IncomeTaxExemption)</td>
+                </tr>
+                <tr>
+                    <th scope="row">Ödenecek gelir vergisi</th>
+                    <td class="text-end">@Fmt(result.IncomeTax)</td>
+                </tr>
+                <tr>
+                    <th scope="row">Damga vergisi (istisna sonrası)</th>
+                    <td class="text-end">@Fmt(result.StampTax)</td>
+                </tr>
+                <tr class="table-success">
+                    <th scope="row">NET</th>
+                    <td class="text-end fw-bold">@Fmt(result.Net)</td>
+                </tr>
+                <tr class="table-warning">
+                    <th scope="row">İşveren toplam yükü</th>
+                    <td class="text-end fw-bold">@Fmt(result.EmployerCost)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p class="text-muted small">
+            Gelir vergisi istisna oranı (bu ay): %@((int)(_yearData.PeriodsByMonth[_month].GvExemptionRate * 100m)).
+            Asgari ücret 33.030 TL'nin altındaki brütler SGK tabanına yükselir (PEK clip).
+        </p>
+    }
+    else
+    {
+        <p class="text-muted"><em>Brüt değer girince sonuç burada görünür.</em></p>
+    }
+
+    <hr class="my-4" />
+
+    <h2 class="h6">Hızlı örnekler</h2>
+    <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(33_030m))">Asgari ücret (33.030)</button>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(60_000m))">60.000 TL brüt</button>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(100_000m))">100.000 TL brüt</button>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(150_000m))">150.000 TL brüt</button>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(250_000m))">SGK tavanı üstü (250.000)</button>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(500_000m))">500.000 TL brüt</button>
+    </div>
 }
-
-<hr class="my-4" />
-
-<h2 class="h6">Hızlı örnekler</h2>
-<div class="d-flex gap-2 flex-wrap">
-    <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(33_030m))">Asgari ücret (33.030)</button>
-    <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(60_000m))">60.000 TL brüt</button>
-    <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(100_000m))">100.000 TL brüt</button>
-    <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(150_000m))">150.000 TL brüt</button>
-    <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(250_000m))">SGK tavanı üstü (250.000)</button>
-    <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => SetExample(500_000m))">500.000 TL brüt</button>
-</div>
 
 @code {
     private decimal _gross = 33_030m;
     private int _month = 1;
     private decimal _cumulativeBefore = 0m;
     private bool _applyDiscount;
+    private YearTaxData? _yearData;
+    private string? _loadError;
 
     private static readonly CultureInfo TrCulture = CultureInfo.GetCultureInfo("tr-TR");
 
-    // === 2026 sabit parametreleri (Hafta 3'te DB'ye taşınacak) ===
-    private const decimal MinWageGross2026 = 33_030.00m;
-    private const decimal SgkBaseMin = MinWageGross2026;
-    private const decimal SgkBaseMax = MinWageGross2026 * 7.5m;
-    private const decimal GvExemptionBase = 28_075.50m;
-    private static readonly decimal StampExemptionPerMonth = MinWageGross2026 * 0.00759m;
-
-    private static readonly IReadOnlyList<TaxBracket> Brackets2026 = new[]
+    protected override async Task OnInitializedAsync()
     {
-        new TaxBracket(190_000m, 0.15m),
-        new TaxBracket(400_000m, 0.20m),
-        new TaxBracket(1_500_000m, 0.27m),
-        new TaxBracket(5_300_000m, 0.35m),
-        new TaxBracket(decimal.MaxValue, 0.40m),
-    };
-
-    private TaxParameters Parameters => new()
-    {
-        SgkEmployeeRate = 0.14m,
-        UnemploymentEmployeeRate = 0.01m,
-        SgkEmployerRate = 0.2075m,
-        UnemploymentEmployerRate = 0.02m,
-        SgkEmployerDiscountRate = 0.05m,
-        ApplySgkEmployerDiscount = _applyDiscount,
-        StampTaxRate = 0.00759m,
-        IncomeTaxBrackets = Brackets2026,
-    };
-
-    private MonthlyTaxPeriod _periodForMonth(int m) => new(
-        StartMonth: m,
-        EndMonth: m,
-        SgkBaseMin: SgkBaseMin,
-        SgkBaseMax: SgkBaseMax,
-        GvExemptionAmount: GvExemptionBase,
-        GvExemptionRate: m <= 7 ? 0.15m : 0.20m,
-        StampExemptionAmount: StampExemptionPerMonth);
+        try
+        {
+            _yearData = await TaxParameters.GetForYearAsync(2026);
+            _applyDiscount = _yearData.Parameters.ApplySgkEmployerDiscount;
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+    }
 
     private MonthlyCalculationResult Calculate()
-        => SalaryCalculator.CalculateMonth(_gross, _cumulativeBefore, _periodForMonth(_month), Parameters);
+    {
+        var data = _yearData!;
+        var period = data.PeriodsByMonth[_month];
+        // Checkbox kullanıcının seçimini yansıtır; DB varsayılanı UI'de override edilebilir.
+        var parameters = data.Parameters with { ApplySgkEmployerDiscount = _applyDiscount };
+        return SalaryCalculator.CalculateMonth(_gross, _cumulativeBefore, period, parameters);
+    }
 
     private void SetExample(decimal gross)
     {
