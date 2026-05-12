@@ -1,0 +1,96 @@
+@page "/raporlar"
+@attribute [Authorize(Policy = Permissions.ReportView)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Domain.Security
+@inject IReportingService Reports
+@inject IJSRuntime JS
+
+<PageTitle>Raporlar</PageTitle>
+
+<h1>Raporlar</h1>
+<p class="text-muted small">Standart raporlar — Excel/PDF tek tıkla.</p>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card h-100"><div class="card-body">
+            <h2 class="h6">Çalışan Listesi</h2>
+            <p class="small text-muted">Tüm çalışanların sicil, pozisyon, departman, lokasyon, brüt maaş özet listesi.</p>
+            <button class="btn btn-outline-success btn-sm" @onclick="DownloadEmployees" disabled="@_busy">📊 Excel (.xlsx)</button>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100"><div class="card-body">
+            <h2 class="h6">Comp Policy Raporu</h2>
+            <p class="small text-muted">Compa-ratio histogramı + bant dışı çalışan listesi.</p>
+            <button class="btn btn-outline-success btn-sm" @onclick="DownloadCompPolicy" disabled="@_busy">📊 Excel (.xlsx)</button>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100"><div class="card-body">
+            <h2 class="h6">Aylık Ücret Raporu</h2>
+            <p class="small text-muted">Seçilen ay için tüm aktif çalışanların brüt/net/işveren maliyeti.</p>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><input type="number" class="form-control form-control-sm" placeholder="Yıl" @bind="_year" /></div>
+                <div class="col-6">
+                    <select class="form-select form-select-sm" @bind="_month">
+                        @for (int m = 1; m <= 12; m++) { <option value="@m">@m. ay</option> }
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-outline-primary btn-sm" @onclick="DownloadPayroll" disabled="@_busy">📄 PDF</button>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100"><div class="card-body">
+            <h2 class="h6">Senaryo Özet PDF</h2>
+            <p class="small text-muted">İlgili senaryo detay sayfasından doğrudan PDF üret.</p>
+            <a class="btn btn-outline-secondary btn-sm" href="/senaryolar">Senaryolara Git →</a>
+        </div></div>
+    </div>
+</div>
+
+@if (_msg is not null) { <div class="alert alert-info mt-3">@_msg</div> }
+
+@code {
+    private int _year = DateTime.Today.Year;
+    private int _month = DateTime.Today.Month;
+    private bool _busy;
+    private string? _msg;
+
+    private async Task DownloadEmployees()
+    {
+        _busy = true; _msg = null;
+        try
+        {
+            var bytes = await Reports.ExportEmployeeListXlsxAsync();
+            await JS.InvokeVoidAsync("downloadFromBytes", $"calisanlar-{DateTime.Today:yyyyMMdd}.xlsx", Convert.ToBase64String(bytes));
+        }
+        catch (Exception ex) { _msg = "Hata: " + ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task DownloadCompPolicy()
+    {
+        _busy = true; _msg = null;
+        try
+        {
+            var bytes = await Reports.ExportCompPolicyXlsxAsync();
+            await JS.InvokeVoidAsync("downloadFromBytes", $"comp-policy-{DateTime.Today:yyyyMMdd}.xlsx", Convert.ToBase64String(bytes));
+        }
+        catch (Exception ex) { _msg = "Hata: " + ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task DownloadPayroll()
+    {
+        _busy = true; _msg = null;
+        try
+        {
+            var bytes = await Reports.ExportMonthlyPayrollPdfAsync(_year, _month);
+            await JS.InvokeVoidAsync("downloadFromBytes", $"aylik-ucret-{_year}-{_month:00}.pdf", Convert.ToBase64String(bytes));
+        }
+        catch (Exception ex) { _msg = "Hata: " + ex.Message; }
+        finally { _busy = false; }
+    }
+}

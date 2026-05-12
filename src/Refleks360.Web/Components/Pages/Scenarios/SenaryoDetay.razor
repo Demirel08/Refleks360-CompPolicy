@@ -6,6 +6,7 @@
 @using Refleks360.Domain.Scenarios
 @using Refleks360.Domain.Security
 @inject IScenarioService Scenarios
+@inject IReportingService Reports
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 @inject IJSRuntime JS
@@ -26,6 +27,9 @@ else
         </div>
         <div class="d-flex gap-2">
             <a class="btn btn-outline-secondary btn-sm" href="/senaryolar">← Senaryolar</a>
+            <AuthorizeView Policy="@Permissions.ReportExport">
+                <button class="btn btn-outline-primary btn-sm" @onclick="DownloadPdf">📄 PDF</button>
+            </AuthorizeView>
             @if (_data.Status == ScenarioStatus.Calculated)
             {
                 <AuthorizeView Policy="@Permissions.ScenarioApply">
@@ -117,5 +121,15 @@ else
     {
         try { await Scenarios.CancelAsync(Id); _data = await Scenarios.GetByIdAsync(Id); _msg = "Senaryo iptal edildi."; }
         catch (Exception ex) { _msg = "Hata: " + ex.Message; }
+    }
+
+    private async Task DownloadPdf()
+    {
+        try
+        {
+            var bytes = await Reports.ExportScenarioPdfAsync(Id);
+            await JS.InvokeVoidAsync("downloadFromBytes", $"senaryo-{Id}-{DateTime.Today:yyyyMMdd}.pdf", Convert.ToBase64String(bytes));
+        }
+        catch (Exception ex) { _msg = "PDF hatası: " + ex.Message; }
     }
 }
