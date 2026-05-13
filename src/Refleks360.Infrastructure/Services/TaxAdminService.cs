@@ -29,6 +29,8 @@ public sealed class TaxAdminService(CompDbContext db) : ITaxAdminService
 
     public async Task SaveYearAsync(TaxYearAdminDto y, CancellationToken ct = default)
     {
+        ValidateRates(y);
+
         var entity = await db.TaxYears.FirstOrDefaultAsync(t => t.Year == y.Year, ct);
         if (entity is null)
         {
@@ -43,6 +45,25 @@ public sealed class TaxAdminService(CompDbContext db) : ITaxAdminService
         entity.ApplySgkEmployerDiscount = y.ApplySgkEmployerDiscount;
         entity.StampTaxRate = y.StampTaxRate;
         await db.SaveChangesAsync(ct);
+    }
+
+    private static void ValidateRates(TaxYearAdminDto y)
+    {
+        // Yanlış birim hatalarını engellemek için makul sınır kontrolü
+        Check(y.SgkEmployeeRate, 0.08m, 0.20m, "SGK İşçi", "~%14");
+        Check(y.UnemploymentEmployeeRate, 0.005m, 0.05m, "İşsizlik İşçi", "~%1");
+        Check(y.SgkEmployerRate, 0.15m, 0.30m, "SGK İşveren", "~%21,75");
+        Check(y.UnemploymentEmployerRate, 0.005m, 0.05m, "İşsizlik İşveren", "~%2");
+        Check(y.SgkEmployerDiscountRate, 0m, 0.15m, "SGK İşveren İndirim", "~%5");
+        Check(y.StampTaxRate, 0.003m, 0.015m, "Damga", "~%0,759");
+
+        static void Check(decimal value, decimal min, decimal max, string name, string normal)
+        {
+            if (value < min || value > max)
+                throw new InvalidOperationException(
+                    $"'{name}' oranı geçersiz: {value:P2}. Beklenen: {min:P2} - {max:P2} (normalde {normal}). " +
+                    $"Lütfen değeri PERCENT olarak gir (örn. 21,75 = %21,75).");
+        }
     }
 
     public async Task SaveBracketsAsync(int year, IReadOnlyList<TaxBracketAdminDto> brackets, CancellationToken ct = default)
