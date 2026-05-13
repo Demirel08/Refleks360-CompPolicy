@@ -128,6 +128,20 @@
                 </NavLink>
             </div>
         </AuthorizeView>
+        <AuthorizeView Policy="@Permissions.Settings">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/yedek">
+                    <span class="bi bi-archive" aria-hidden="true"></span> Yedekleme
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="@Roles.SystemAdmin">
+            <div class="nav-item px-3">
+                <a class="nav-link" href="/hangfire" target="_blank">
+                    <span class="bi bi-cpu" aria-hidden="true"></span> Hangfire ↗
+                </a>
+            </div>
+        </AuthorizeView>
         <AuthorizeView Policy="@Permissions.UserManage">
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="admin/kullanicilar">

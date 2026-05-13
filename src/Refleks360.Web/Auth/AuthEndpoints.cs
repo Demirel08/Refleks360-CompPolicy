@@ -64,6 +64,21 @@ public static class AuthEndpoints
             return Results.Redirect("/login");
         });
 
+        // Şirket seçici (Faz 3 Ay 12)
+        endpoints.MapPost("/company/switch", async (
+            HttpContext http,
+            Refleks360.Application.Abstractions.ICurrentCompanyContext companyCtx) =>
+        {
+            var form = await http.Request.ReadFormAsync();
+            if (int.TryParse(form["companyId"].ToString(), out var id))
+            {
+                await companyCtx.SetCurrentCompanyAsync(id);
+            }
+            var returnUrl = form["returnUrl"].ToString();
+            if (string.IsNullOrWhiteSpace(returnUrl)) returnUrl = "/";
+            return Results.Redirect(returnUrl);
+        }).DisableAntiforgery();
+
         return endpoints;
     }
 }

@@ -7,6 +7,7 @@ using Refleks360.Application;
 using Refleks360.Infrastructure;
 using Refleks360.Infrastructure.Identity;
 using Refleks360.Infrastructure.Persistence.Auditing;
+using Refleks360.Web.Api;
 using Refleks360.Web.Auth;
 using Refleks360.Web.Components;
 using Syncfusion.Blazor;
@@ -30,6 +31,7 @@ builder.Services.AddRefleks360Infrastructure(builder.Configuration);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditUserContext, HttpAuditUserContext>();
+builder.Services.AddScoped<Refleks360.Application.Abstractions.ICurrentCompanyContext, HttpCurrentCompanyContext>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, AppUserClaimsPrincipalFactory>();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
@@ -46,6 +48,9 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Strict;
 });
+
+builder.Services.AddAuthentication()
+    .AddScheme<ApiKeyAuthOptions, ApiKeyAuthHandler>(ApiKeyAuthOptions.Scheme, _ => { });
 
 builder.Services.AddAuthorization();
 
@@ -87,6 +92,12 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.MapAuthEndpoints();
+app.MapPublicApiEndpoints();
+
+app.UseHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
+{
+    Authorization = new[] { new HangfireAdminAuthFilter() }
+});
 
 // İlk açılışta admin hesabı ve rolü.
 using (var scope = app.Services.CreateScope())

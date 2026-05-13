@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@inject Refleks360.Application.Abstractions.ICurrentCompanyContext CompanyCtx
+@inject NavigationManager NavMgr
 
 <div class="page">
     <div class="sidebar">
@@ -6,21 +8,42 @@
     </div>
 
     <main>
-        <div class="top-row px-4 d-flex justify-content-end align-items-center gap-3">
+        <div class="top-row px-4 d-flex justify-content-between align-items-center gap-3">
             <AuthorizeView>
-                <Authorized>
-                    <span class="text-muted small">
-                        <i class="bi bi-person-circle"></i>
-                        @context.User.Identity?.Name
-                    </span>
-                    <form method="post" action="/auth/logout" class="m-0">
-                        <button type="submit" class="btn btn-sm btn-outline-secondary">Çıkış</button>
-                    </form>
+                <Authorized Context="auth">
+                    @if (_companies is not null && _companies.Count > 1)
+                    {
+                        <form method="post" action="/company/switch" class="m-0 d-flex align-items-center gap-2">
+                            <input type="hidden" name="returnUrl" value="@NavMgr.Uri" />
+                            <small class="text-muted">Şirket:</small>
+                            <select name="companyId" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                                @foreach (var c in _companies)
+                                {
+                                    <option value="@c.Id" selected="@(c.Id == _currentId)">@c.Name</option>
+                                }
+                            </select>
+                        </form>
+                    }
                 </Authorized>
-                <NotAuthorized>
-                    <a class="btn btn-sm btn-primary" href="/login">Giriş</a>
-                </NotAuthorized>
+                <NotAuthorized><span></span></NotAuthorized>
             </AuthorizeView>
+
+            <div class="d-flex align-items-center gap-3">
+                <AuthorizeView>
+                    <Authorized Context="auth2">
+                        <span class="text-muted small">
+                            <i class="bi bi-person-circle"></i>
+                            @auth2.User.Identity?.Name
+                        </span>
+                        <form method="post" action="/auth/logout" class="m-0">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Çıkış</button>
+                        </form>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a class="btn btn-sm btn-primary" href="/login">Giriş</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
         </div>
 
         <article class="content px-4">
@@ -34,3 +57,14 @@
     <a href="." class="reload">Sayfayı yenile</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    private IReadOnlyList<Refleks360.Application.Abstractions.CompanyOption>? _companies;
+    private int _currentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentId = CompanyCtx.CurrentCompanyId;
+        _companies = await CompanyCtx.GetAccessibleCompaniesAsync();
+    }
+}

@@ -1,0 +1,92 @@
+@page "/admin/yedek"
+@attribute [Authorize(Policy = Permissions.Settings)]
+@rendermode InteractiveServer
+@using Refleks360.Application.Abstractions
+@using Refleks360.Domain.Security
+@inject IBackupService Backup
+@inject IConfiguration Config
+
+<PageTitle>Yedekle / Restore</PageTitle>
+
+<h1>Veritabanı Yedekleme</h1>
+<p class="text-muted small">Local diskte (SQL Server'ın erişebildiği klasör) .bak dosyaları olarak saklanır.</p>
+
+<div class="card mb-3"><div class="card-body">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label class="form-label small">Yedek klasörü</label>
+            <input class="form-control" @bind="_folder" />
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-primary" @onclick="DoBackup" disabled="@_busy">📦 Yedek Al</button>
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-outline-secondary" @onclick="LoadList">Listele</button>
+        </div>
+    </div>
+    @if (_msg is not null) { <div class="mt-2 text-info">@_msg</div> }
+</div></div>
+
+@if (_list is null) { <p>Listele tıkla.</p> }
+else if (_list.Count == 0)
+{
+    <div class="alert alert-info">Bu klasörde .bak dosyası yok.</div>
+}
+else
+{
+    <table class="table table-sm">
+        <thead><tr><th>Dosya</th><th>Tarih (UTC)</th><th class="text-end">Boyut</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var b in _list)
+            {
+                <tr>
+                    <td class="small"><code>@b.FileName</code></td>
+                    <td class="small">@b.CreatedAtUtc:yyyy-MM-dd HH:mm</td>
+                    <td class="text-end">@FormatSize(b.SizeBytes)</td>
+                    <td>
+                        <button class="btn btn-link btn-sm text-danger p-0" @onclick="@(() => Restore(b.FileName))" disabled="@_busy">↻ Restore</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private string _folder = @"C:\Refleks360\Backup";
+    private IReadOnlyList<BackupInfo>? _list;
+    private bool _busy;
+    private string? _msg;
+
+    private async Task LoadList()
+    {
+        _list = await Backup.ListBackupsAsync(_folder);
+    }
+
+    private async Task DoBackup()
+    {
+        _busy = true; _msg = null;
+        try
+        {
+            var path = await Backup.CreateBackupAsync(_folder);
+            _msg = $"Yedek alındı: {path}";
+            await LoadList();
+        }
+        catch (Exception ex) { _msg = "Hata: " + ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task Restore(string filePath)
+    {
+        _busy = true; _msg = null;
+        try
+        {
+            await Backup.RestoreBackupAsync(filePath);
+            _msg = "Restore tamamlandı. Sayfayı yenilemen önerilir.";
+        }
+        catch (Exception ex) { _msg = "Hata: " + ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private static string FormatSize(long b) => b < 1024 * 1024 ? $"{b / 1024.0:F1} KB" : $"{b / 1024.0 / 1024.0:F1} MB";
+}

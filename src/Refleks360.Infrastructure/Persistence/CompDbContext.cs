@@ -55,6 +55,7 @@ public sealed class CompDbContext(DbContextOptions<CompDbContext> options)
         TaxParameters2026Seed.Apply(modelBuilder);
         OrganizationSeed.Apply(modelBuilder);
         SalarySeed.Apply(modelBuilder);
+        HoldingSeed.Apply(modelBuilder);
     }
 
     private static void ConfigureTaxSchema(ModelBuilder modelBuilder)

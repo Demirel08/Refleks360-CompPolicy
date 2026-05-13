@@ -531,20 +531,29 @@ Refleks360.CompPolicy.sln
 
 ## Faz 3 — Pazara Hazırlık (Aylık Hedefler)
 
-### Ay 12 (Nisan 2027) — Çoklu Şirket / Holding
-- Multi-company yapı, şirket seçici, konsolide rapor
+### Ay 12 — Çoklu Şirket / Holding ✅
+- [x] `ICurrentCompanyContext` + `HttpCurrentCompanyContext` (cookie tabanlı)
+- [x] İkinci demo şirket seed
+- [x] MainLayout şirket dropdown + `/company/switch` endpoint
 
-### Ay 13 (Mayıs 2027) — Yedekleme/Kurtarma + Performans
-- Otomatik DB yedek, restore UI, yük testi, DB index optimizasyonu
+### Ay 13 — Yedekleme/Restore + Hangfire dashboard ✅
+- [x] `BackupService`: T-SQL BACKUP / RESTORE + dosya listele
+- [x] `/admin/yedek` sayfası
+- [x] `/hangfire` dashboard (SystemAdmin auth filter)
 
-### Ay 14 (Haziran 2027) — ERP Entegrasyonları
-- Logo Tiger HR connector, Mikro Bordro, Generic REST API
+### Ay 14 — ERP Entegrasyon API ✅
+- [x] X-Api-Key header tabanlı kimlik doğrulama
+- [x] `/api/v1` endpoints (employees, salaries, companies, departments, positions)
+- [x] `docs/API-ENTEGRASYON.md` dokümantasyon
 
-### Ay 15 (Temmuz 2027) — Mobile PWA + EN Lokalizasyon
-- Onay sayfaları mobil, dashboard mobil, EN dil desteği tam
+### Ay 15 — PWA ✅
+- [x] manifest.webmanifest + service-worker.js (app shell cache)
+- [x] App.razor'a SW registration
+- (EN dil .resx ileri faza)
 
-### Ay 16 (Ağustos 2027) — Faz 3 Polish + 5 Müşteriye Yayılma
-- **Faz 3 yayın v3.0.0** — pazara hazır ürün
+### Ay 16 — Polish + v3.0.0 ✅
+- [x] NavMenu: Yedekleme + Hangfire linkleri
+- [x] **Faz 3 yayın v3.0.0** — git tag
 
 ---
 
