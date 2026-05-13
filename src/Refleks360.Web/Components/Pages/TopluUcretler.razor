@@ -1,0 +1,145 @@
+@page "/toplu-ucretler"
+@attribute [Authorize(Policy = Permissions.EmployeeViewSalary)]
+@rendermode InteractiveServer
+@using System.Globalization
+@using Refleks360.Application.Abstractions
+@using Refleks360.Application.Payroll
+@using Refleks360.Domain.Security
+
+@inject IPayrollViewService Payroll
+@inject NavigationManager Nav
+
+<PageTitle>Toplu Ücret Görünümü</PageTitle>
+
+<div class="page-header d-flex justify-content-between align-items-start">
+    <div>
+        <h1 class="mb-1">Toplu Ücret Görünümü</h1>
+        <p class="text-muted mb-0">Tüm aktif çalışanların brüt, net ve işveren maliyeti tek tabloda.</p>
+    </div>
+</div>
+
+@if (_data is null)
+{
+    <div class="loading">Yükleniyor…</div>
+}
+else
+{
+    <div class="kpi-grid mb-3">
+        <div class="kpi-card kpi-emerald">
+            <div class="kpi-label">Aktif Çalışan</div>
+            <div class="kpi-value">@_data.Headcount</div>
+        </div>
+        <div class="kpi-card kpi-indigo">
+            <div class="kpi-label">Aylık Brüt Toplam</div>
+            <div class="kpi-value">@_data.TotalGross.ToString("N0") <span class="kpi-unit">₺</span></div>
+            <div class="kpi-sub">@((_data.TotalGross * 12m).ToString("N0")) ₺ / yıl</div>
+        </div>
+        <div class="kpi-card kpi-amber">
+            <div class="kpi-label">Aylık Net Toplam</div>
+            <div class="kpi-value">@_data.TotalNet.ToString("N0") <span class="kpi-unit">₺</span></div>
+            <div class="kpi-sub">@((_data.TotalNet * 12m).ToString("N0")) ₺ / yıl</div>
+        </div>
+        <div class="kpi-card kpi-rose">
+            <div class="kpi-label">Aylık İşveren Yükü</div>
+            <div class="kpi-value">@_data.TotalEmployerCost.ToString("N0") <span class="kpi-unit">₺</span></div>
+            <div class="kpi-sub">@((_data.TotalEmployerCost * 12m).ToString("N0")) ₺ / yıl</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="h6 mb-0">Çalışan listesi</h2>
+                <input class="form-control form-control-sm" style="max-width: 280px;"
+                       placeholder="Ara: ad, sicil, departman..." @bind="_search" @bind:event="oninput" />
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Sicil</th>
+                            <th>Ad Soyad</th>
+                            <th>Departman</th>
+                            <th>Pozisyon</th>
+                            <th class="text-center">Kademe</th>
+                            <th class="text-end">Aylık Brüt</th>
+                            <th class="text-end">Aylık Net</th>
+                            <th class="text-end">İşveren Mal.</th>
+                            <th class="text-end">Compa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Filtered)
+                        {
+                            <tr style="cursor:pointer;" @onclick="@(() => Nav.NavigateTo($"/calisanlar/{r.Id}"))">
+                                <td><code>@r.EmployeeNumber</code></td>
+                                <td>@r.FullName</td>
+                                <td>@r.Department</td>
+                                <td>@r.Position</td>
+                                <td class="text-center"><span class="badge bg-secondary">@r.GradeCode</span></td>
+                                <td class="text-end">@(r.Gross?.ToString("N0") ?? "—")</td>
+                                <td class="text-end fw-bold">@(r.Net?.ToString("N0") ?? "—")</td>
+                                <td class="text-end">@(r.EmployerCost?.ToString("N0") ?? "—")</td>
+                                <td class="text-end">
+                                    @if (r.CompaRatio.HasValue)
+                                    {
+                                        <span class="@CompaBadge(r.BandFlag)">@r.CompaRatio.Value.ToString("F2")</span>
+                                    }
+                                    else { <span class="text-muted">—</span> }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted small mt-2">
+                @Filtered.Count satır gösteriliyor (toplam @_data.Rows.Count).
+                Bir satıra tıkla → çalışan detayına git.
+            </p>
+        </div>
+    </div>
+}
+
+<style>
+    .loading { padding: 4rem; text-align: center; color: var(--r360-text-muted); }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .kpi-card { background: white; border: 1px solid var(--r360-border); border-radius: var(--r360-radius); padding: 1.1rem 1.3rem; position: relative; overflow: hidden; box-shadow: var(--r360-shadow-sm); }
+    .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .kpi-indigo::before { background: #4F46E5; } .kpi-emerald::before { background: #10B981; }
+    .kpi-amber::before { background: #F59E0B; } .kpi-rose::before { background: #F43F5E; }
+    .kpi-label { font-size: 0.825rem; font-weight: 600; color: var(--r360-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+    .kpi-value { font-size: 1.8rem; font-weight: 700; color: var(--r360-text); line-height: 1.1; letter-spacing: -0.02em; }
+    .kpi-value .kpi-unit { font-size: 0.95rem; color: var(--r360-text-muted); font-weight: 500; }
+    .kpi-sub { font-size: 0.85rem; color: var(--r360-text-muted); margin-top: 0.35rem; }
+</style>
+
+@code {
+    private PayrollSnapshot? _data;
+    private string _search = "";
+
+    private IReadOnlyList<EmployeePayrollRow> Filtered
+    {
+        get
+        {
+            if (_data is null) return Array.Empty<EmployeePayrollRow>();
+            if (string.IsNullOrWhiteSpace(_search)) return _data.Rows;
+            var s = _search.Trim();
+            return _data.Rows.Where(r =>
+                r.EmployeeNumber.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                r.FullName.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                r.Department.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                r.Position.Contains(s, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => _data = await Payroll.GetCurrentSnapshotAsync();
+
+    private static string CompaBadge(string? flag) => flag switch
+    {
+        "below" => "badge bg-danger",
+        "above" => "badge bg-warning",
+        "in" => "badge bg-success",
+        _ => "badge bg-secondary",
+    };
+}

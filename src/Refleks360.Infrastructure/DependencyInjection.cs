@@ -69,6 +69,7 @@ public static class DependencyInjection
         services.AddSingleton<CacheInvalidator>();
         services.AddScoped<ITaxParameterService, TaxParameterService>();
         services.AddScoped<IEmployeeQueryService, EmployeeQueryService>();
+        services.AddScoped<IPayrollViewService, PayrollViewService>();
         services.AddScoped<IOrganizationLookupService, OrganizationLookupService>();
         services.AddScoped<IUserAdminService, UserAdminService>();
         services.AddScoped<IEmployeeImportService, EmployeeImportService>();

@@ -88,7 +88,7 @@ public sealed class ScenarioService(CompDbContext db, ITaxParameterService taxPa
         // Basitleştirilmiş Mod A (oransal) + Mod B (min garantili) algoritması.
         var raiseByEmp = new Dictionary<int, (decimal newGross, decimal pct, bool locked)>();
 
-        decimal totalAnnualCurrent = employees.Sum(e => e.CurrentGross!.Value) * 12m;
+        decimal curTotalAnnual = employees.Sum(e => e.CurrentGross!.Value) * 12m;
 
         switch (input.Type)
         {
@@ -138,43 +138,114 @@ public sealed class ScenarioService(CompDbContext db, ITaxParameterService taxPa
             case ScenarioType.TargetedBudget:
             {
                 decimal target = input.TargetTotalAnnualCost ?? 0m;
+                decimal alpha = input.RebalancingAlpha ?? 0m;
+                decimal rMin = (input.MinRaisePercent ?? 0m) / 100m;
+                decimal rMax = (input.MaxRaisePercent ?? 200m) / 100m;
 
-                // Önce herkese min garantiyi uygula
-                decimal allocatedAnnual = 0m;
-                var temp = new Dictionary<int, decimal>();
+                if (curTotalAnnual <= 0m)
+                {
+                    foreach (var emp in employees)
+                        raiseByEmp[emp.Id] = (emp.CurrentGross!.Value, 0m, lockedSet.Contains(emp.Id));
+                    break;
+                }
+
+                // Locked çalışanların yıllık katkısı (verilen sabit oranla)
+                decimal lockedAnnualIncrease = 0m;
                 foreach (var emp in employees)
                 {
-                    decimal pct;
-                    if (lockedSet.Contains(emp.Id) && input.LockedEmployeePercents?.TryGetValue(emp.Id, out var lp) == true)
-                        pct = lp;
-                    else
-                        pct = minGuaranteed;
-
-                    decimal newGross = Math.Round(emp.CurrentGross!.Value * (1m + pct / 100m), 2);
-                    temp[emp.Id] = newGross;
-                    allocatedAnnual += newGross * 12m;
+                    if (!lockedSet.Contains(emp.Id)) continue;
+                    decimal lockedPct = input.LockedEmployeePercents?.TryGetValue(emp.Id, out var lp) == true ? lp : minGuaranteed;
+                    decimal annualOld = emp.CurrentGross!.Value * 12m;
+                    decimal annualNew = annualOld * (1m + lockedPct / 100m);
+                    lockedAnnualIncrease += annualNew - annualOld;
                 }
-                // Kalan bütçeyi non-locked çalışanlara oransal dağıt
-                decimal remainingAnnual = target - allocatedAnnual;
-                if (remainingAnnual > 0m)
+
+                // Free çalışanlar (non-locked) için hedef artış
+                decimal targetIncrease = Math.Max(0m, target - curTotalAnnual - lockedAnnualIncrease);
+
+                // 4) Ortalama maaş (alpha rebalancing için)
+                var freeEmployees = employees.Where(e => !lockedSet.Contains(e.Id)).ToList();
+                decimal avgGross = freeEmployees.Count > 0 ? freeEmployees.Average(e => e.CurrentGross!.Value) : 0m;
+                decimal freeAnnualSum = freeEmployees.Sum(e => e.CurrentGross!.Value) * 12m;
+                decimal rTarget = freeAnnualSum > 0m ? targetIncrease / freeAnnualSum : 0m;
+
+                // 5) Her free çalışan için ham oran:
+                //    raw_i = r_target + alpha × ((avg/cost) - 1)
+                //    Min garantili: max(raw, minGuaranteed%)
+                //    Sınırlar: clamp(raw, rMin, rMax)
+                var raw = new Dictionary<int, decimal>();
+                foreach (var emp in freeEmployees)
                 {
-                    var freeIds = employees.Where(e => !lockedSet.Contains(e.Id)).Select(e => e.Id).ToList();
-                    decimal freeAnnualSum = freeIds.Sum(id => temp[id]) * 12m;
-                    if (freeAnnualSum > 0m)
+                    decimal gross = emp.CurrentGross!.Value;
+                    decimal ratio = avgGross > 0m ? avgGross / gross : 1m;
+                    decimal rawRate = rTarget + alpha * (ratio - 1m);
+                    decimal minGuard = minGuaranteed / 100m;
+                    if (rawRate < minGuard) rawRate = minGuard;
+                    if (rawRate < rMin) rawRate = rMin;
+                    if (rawRate > rMax) rawRate = rMax;
+                    raw[emp.Id] = rawRate;
+                }
+
+                // 6) Lambda scaling — toplam bütçeye birebir tutturmak için (eski programdaki gibi)
+                decimal Achieved(decimal lam)
+                {
+                    decimal sum = 0m;
+                    foreach (var emp in freeEmployees)
                     {
-                        decimal extraFactor = remainingAnnual / freeAnnualSum; // ek oransal artış
-                        foreach (var id in freeIds)
+                        decimal r = raw[emp.Id] * lam;
+                        if (r < rMin) r = rMin;
+                        if (r > rMax) r = rMax;
+                        sum += emp.CurrentGross!.Value * 12m * r;
+                    }
+                    return sum;
+                }
+
+                decimal lambda;
+                if (targetIncrease <= Achieved(0m) + 0.01m)
+                {
+                    lambda = 0m;
+                }
+                else
+                {
+                    decimal lo = 0m, hi = 1m;
+                    while (Achieved(hi) < targetIncrease && hi < 100m) hi *= 2m;
+                    if (Achieved(hi) < targetIncrease)
+                    {
+                        lambda = hi; // ulaşılamıyor, mümkün olan max
+                    }
+                    else
+                    {
+                        for (int iter = 0; iter < 60; iter++)
                         {
-                            temp[id] = Math.Round(temp[id] * (1m + extraFactor), 2);
+                            decimal mid = (lo + hi) / 2m;
+                            if (Achieved(mid) < targetIncrease) lo = mid;
+                            else hi = mid;
                         }
+                        lambda = hi;
                     }
                 }
 
+                // 7) Oranları uygula
                 foreach (var emp in employees)
                 {
-                    decimal newGross = temp[emp.Id];
+                    decimal newGross;
+                    decimal usedPct;
+                    bool isLocked = lockedSet.Contains(emp.Id);
+
+                    if (isLocked)
+                    {
+                        usedPct = input.LockedEmployeePercents?.TryGetValue(emp.Id, out var lp) == true ? lp : minGuaranteed;
+                    }
+                    else
+                    {
+                        decimal r = raw[emp.Id] * lambda;
+                        if (r < rMin) r = rMin;
+                        if (r > rMax) r = rMax;
+                        usedPct = r * 100m;
+                    }
+                    newGross = Math.Round(emp.CurrentGross!.Value * (1m + usedPct / 100m), 2);
                     if (minWage > 0m && newGross < minWage) newGross = minWage;
-                    raiseByEmp[emp.Id] = (newGross, ((newGross / emp.CurrentGross!.Value) - 1m) * 100m, lockedSet.Contains(emp.Id));
+                    raiseByEmp[emp.Id] = (newGross, ((newGross / emp.CurrentGross!.Value) - 1m) * 100m, isLocked);
                 }
                 break;
             }

@@ -20,6 +20,12 @@
             </NavLink>
         </AuthorizeView>
 
+        <AuthorizeView Policy="@Permissions.EmployeeViewSalary">
+            <NavLink class="nav-link" href="toplu-ucretler">
+                <i class="bi bi-table"></i> Toplu Ücretler
+            </NavLink>
+        </AuthorizeView>
+
         <AuthorizeView Policy="@Permissions.ScenarioView">
             <NavLink class="nav-link" href="senaryolar">
                 <i class="bi bi-layers"></i> Senaryolar

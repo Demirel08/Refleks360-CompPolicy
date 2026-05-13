@@ -107,15 +107,35 @@
 {
     <div class="card mb-3"><div class="card-body">
         <h2 class="h6">Hedefli bütçe parametreleri</h2>
+        <p class="text-muted small">
+            Eski programdaki <strong>"alpha çarpanı"</strong> ile aynı mantık: toplam bütçeyi
+            herkese eşit oranla mı yoksa düşük maaşlıya daha çok vererek mi dağıtacaksın?
+        </p>
         <div class="row g-2">
-            <div class="col-md-4">
-                <label class="form-label small">Yıllık brüt maaş toplamı hedefi (TL)</label>
+            <div class="col-md-3">
+                <label class="form-label small">Yıllık brüt hedef (TL)</label>
                 <input type="number" class="form-control" @bind="_input.TargetTotalAnnualCost" />
             </div>
-            <div class="col-md-3">
-                <label class="form-label small">Min garantili oran (%)</label>
+            <div class="col-md-2">
+                <label class="form-label small">Min garantili (%)</label>
                 <input type="number" step="0.5" class="form-control" @bind="_input.MinGuaranteedPercent" />
-                <small class="text-muted">0 = Mod A (oransal dağıtım); 0&lt; = Mod B (min garantili + kalan oransal)</small>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Rebalancing alpha (α)</label>
+                <input type="number" step="0.1" class="form-control" @bind="_input.RebalancingAlpha" />
+                <small class="text-muted">
+                    <strong>0</strong> = oransal (herkese aynı %).
+                    <strong>0.3-0.5</strong> = ılımlı (düşük maaşlı +).
+                    <strong>1.0+</strong> = agresif.
+                </small>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Alt sınır (%)</label>
+                <input type="number" step="0.5" class="form-control" @bind="_input.MinRaisePercent" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Üst sınır (%)</label>
+                <input type="number" step="0.5" class="form-control" @bind="_input.MaxRaisePercent" />
             </div>
         </div>
     </div></div>
