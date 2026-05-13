@@ -1,153 +1,124 @@
 @using Refleks360.Domain.Security
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Refleks 360 ÜP</a>
-    </div>
-</div>
-
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
-
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Ana sayfa
-            </NavLink>
+<div class="nav-scrollable">
+    <div class="brand">
+        <span class="brand-icon">R360</span>
+        <div>
+            <div class="brand-name">Refleks 360</div>
+            <div class="brand-sub">Ücret Politikası</div>
         </div>
+    </div>
+
+    <nav class="nav flex-column">
+        <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+            <i class="bi bi-grid-1x2"></i> Genel Bakış
+        </NavLink>
 
         <AuthorizeView Policy="@Permissions.EmployeeView">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="calisanlar">
-                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Çalışanlar
-                </NavLink>
-            </div>
+            <NavLink class="nav-link" href="calisanlar">
+                <i class="bi bi-people"></i> Çalışanlar
+            </NavLink>
         </AuthorizeView>
 
         <AuthorizeView Policy="@Permissions.ScenarioView">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="senaryolar">
-                    <span class="bi bi-files" aria-hidden="true"></span> Senaryolar
-                </NavLink>
-            </div>
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="simulasyon">
-                    <span class="bi bi-arrow-left-right" aria-hidden="true"></span> Simülasyon
-                </NavLink>
-            </div>
+            <NavLink class="nav-link" href="senaryolar">
+                <i class="bi bi-layers"></i> Senaryolar
+            </NavLink>
+            <NavLink class="nav-link" href="simulasyon">
+                <i class="bi bi-arrow-left-right"></i> Simülasyon
+            </NavLink>
         </AuthorizeView>
 
         <AuthorizeView Policy="@Permissions.ReportView">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="raporlar">
-                    <span class="bi bi-file-earmark-text" aria-hidden="true"></span> Raporlar
-                </NavLink>
-            </div>
+            <NavLink class="nav-link" href="raporlar">
+                <i class="bi bi-file-earmark-bar-graph"></i> Raporlar
+            </NavLink>
         </AuthorizeView>
 
         <AuthorizeView>
             <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="onaylarim">
-                        <span class="bi bi-inbox" aria-hidden="true"></span> Onaylarım
-                    </NavLink>
-                </div>
+                <NavLink class="nav-link" href="onaylarim">
+                    <i class="bi bi-inbox"></i> Onaylarım
+                </NavLink>
             </Authorized>
         </AuthorizeView>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="hesaplama">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Maaş Hesaplama
+        <NavLink class="nav-link" href="hesaplama">
+            <i class="bi bi-calculator"></i> Maaş Hesaplama
+        </NavLink>
+
+        <AuthorizeView Policy="@Permissions.BandView">
+            <div class="nav-group">
+                <div class="nav-group-label">Analiz</div>
+                <NavLink class="nav-link" href="admin/comp-policy">
+                    <i class="bi bi-bar-chart"></i> Comp Policy
+                </NavLink>
+                <NavLink class="nav-link" href="admin/pay-equity">
+                    <i class="bi bi-gender-ambiguous"></i> Pay Equity
+                </NavLink>
+                <NavLink class="nav-link" href="admin/benchmark">
+                    <i class="bi bi-bullseye"></i> Benchmark
+                </NavLink>
+                <NavLink class="nav-link" href="admin/heatmap">
+                    <i class="bi bi-grid-3x3"></i> Heat Map
+                </NavLink>
+            </div>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="@Permissions.ReportView">
+            <NavLink class="nav-link" href="admin/multi-year">
+                <i class="bi bi-calendar3"></i> Çok Yıllı Plan
             </NavLink>
-        </div>
+        </AuthorizeView>
 
         <AuthorizeView Policy="@Permissions.OrgEdit">
-            <div class="nav-item px-3 mt-3">
-                <small class="text-muted ps-3">YÖNETİM</small>
-            </div>
-            <div class="nav-item px-3">
+            <div class="nav-group">
+                <div class="nav-group-label">Yönetim</div>
                 <NavLink class="nav-link" href="admin/organizasyon">
-                    <span class="bi bi-diagram-3" aria-hidden="true"></span> Organizasyon
+                    <i class="bi bi-diagram-3"></i> Organizasyon
                 </NavLink>
             </div>
         </AuthorizeView>
         <AuthorizeView Policy="@Permissions.BandEdit">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/bantlar">
-                    <span class="bi bi-bar-chart-line" aria-hidden="true"></span> Maaş Bantları
-                </NavLink>
-            </div>
-        </AuthorizeView>
-        <AuthorizeView Policy="@Permissions.BandView">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/comp-policy">
-                    <span class="bi bi-graph-up" aria-hidden="true"></span> Comp Policy
-                </NavLink>
-            </div>
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/pay-equity">
-                    <span class="bi bi-gender-ambiguous" aria-hidden="true"></span> Pay Equity
-                </NavLink>
-            </div>
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/benchmark">
-                    <span class="bi bi-bullseye" aria-hidden="true"></span> Benchmark
-                </NavLink>
-            </div>
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/heatmap">
-                    <span class="bi bi-grid-3x3-gap" aria-hidden="true"></span> Heat Map
-                </NavLink>
-            </div>
-        </AuthorizeView>
-        <AuthorizeView Policy="@Permissions.ReportView">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/multi-year">
-                    <span class="bi bi-calendar-range" aria-hidden="true"></span> Çok Yıllı Plan
-                </NavLink>
-            </div>
+            <NavLink class="nav-link" href="admin/bantlar">
+                <i class="bi bi-rulers"></i> Maaş Bantları
+            </NavLink>
         </AuthorizeView>
         <AuthorizeView Policy="@Permissions.TaxParameterView">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/vergi">
-                    <span class="bi bi-receipt-cutoff" aria-hidden="true"></span> Vergi Parametreleri
-                </NavLink>
-            </div>
+            <NavLink class="nav-link" href="admin/vergi">
+                <i class="bi bi-receipt"></i> Vergi Parametreleri
+            </NavLink>
         </AuthorizeView>
         <AuthorizeView Policy="@Permissions.Settings">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/onay-sablonlari">
-                    <span class="bi bi-list-check" aria-hidden="true"></span> Onay Şablonları
-                </NavLink>
-            </div>
+            <NavLink class="nav-link" href="admin/onay-sablonlari">
+                <i class="bi bi-list-check"></i> Onay Şablonları
+            </NavLink>
         </AuthorizeView>
+
         <AuthorizeView Policy="@Permissions.AuditView">
-            <div class="nav-item px-3">
+            <div class="nav-group">
+                <div class="nav-group-label">Sistem</div>
                 <NavLink class="nav-link" href="admin/audit">
-                    <span class="bi bi-journal-text" aria-hidden="true"></span> Audit Log
+                    <i class="bi bi-journal-text"></i> Audit Log
                 </NavLink>
             </div>
         </AuthorizeView>
         <AuthorizeView Policy="@Permissions.Settings">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/yedek">
-                    <span class="bi bi-archive" aria-hidden="true"></span> Yedekleme
-                </NavLink>
-            </div>
+            <NavLink class="nav-link" href="admin/yedek">
+                <i class="bi bi-archive"></i> Yedekleme
+            </NavLink>
         </AuthorizeView>
         <AuthorizeView Roles="@Roles.SystemAdmin">
-            <div class="nav-item px-3">
-                <a class="nav-link" href="/hangfire" target="_blank">
-                    <span class="bi bi-cpu" aria-hidden="true"></span> Hangfire ↗
-                </a>
-            </div>
+            <a class="nav-link" href="/hangfire" target="_blank">
+                <i class="bi bi-cpu"></i> Hangfire <i class="bi bi-arrow-up-right" style="font-size:0.65rem;"></i>
+            </a>
         </AuthorizeView>
         <AuthorizeView Policy="@Permissions.UserManage">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/kullanicilar">
-                    <span class="bi bi-person-circle" aria-hidden="true"></span> Kullanıcılar
-                </NavLink>
-            </div>
+            <NavLink class="nav-link" href="admin/kullanicilar">
+                <i class="bi bi-person-gear"></i> Kullanıcılar
+            </NavLink>
         </AuthorizeView>
     </nav>
+
+    <div class="footer-version">v3.0.0 · @DateTime.Now.Year</div>
 </div>

@@ -4,50 +4,110 @@
 
 <PageTitle>Giriş — Refleks 360 ÜP</PageTitle>
 
-<div class="d-flex justify-content-center align-items-center" style="min-height: 100vh; background: #f5f5f5;">
-    <div class="card shadow-sm" style="width: 22rem;">
-        <div class="card-body">
-            <h1 class="h4 mb-3 text-center">Refleks 360 ÜP</h1>
-            <p class="text-muted small text-center mb-4">Ücret Politikası Yönetim Sistemi</p>
-
-            @if (!string.IsNullOrEmpty(Error))
-            {
-                <div class="alert alert-danger small py-2">@ErrorMessage(Error)</div>
-            }
-
-            <form method="post" action="/auth/login">
-                <input type="hidden" name="returnUrl" value="@(ReturnUrl ?? "/")" />
-
-                <div class="mb-3">
-                    <label class="form-label" for="userName">Kullanıcı adı</label>
-                    <input id="userName"
-                           name="userName"
-                           type="text"
-                           class="form-control"
-                           autocomplete="username"
-                           autofocus
-                           required />
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label" for="password">Şifre</label>
-                    <input id="password"
-                           name="password"
-                           type="password"
-                           class="form-control"
-                           autocomplete="current-password"
-                           required />
-                </div>
-
-                <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
-            </form>
-
-            <p class="text-muted small text-center mt-3 mb-0">
-                İlk kurulumda <code>admin</code> hesabı oluşturulur.
-            </p>
+<div class="login-wrap">
+    <div class="login-card">
+        <div class="login-brand">
+            <div class="brand-icon-lg">R360</div>
+            <h1 class="login-title">Refleks 360</h1>
+            <p class="login-sub">Ücret Politikası Yönetim Sistemi</p>
         </div>
+
+        @if (!string.IsNullOrEmpty(Error))
+        {
+            <div class="alert alert-danger small">@ErrorMessage(Error)</div>
+        }
+
+        <form method="post" action="/auth/login">
+            <input type="hidden" name="returnUrl" value="@(ReturnUrl ?? "/")" />
+
+            <div class="mb-3">
+                <label class="form-label" for="userName">Kullanıcı adı</label>
+                <input id="userName"
+                       name="userName"
+                       type="text"
+                       class="form-control"
+                       autocomplete="username"
+                       autofocus
+                       required />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="password">Şifre</label>
+                <input id="password"
+                       name="password"
+                       type="password"
+                       class="form-control"
+                       autocomplete="current-password"
+                       required />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 btn-lg">Giriş Yap</button>
+        </form>
+
+        <p class="text-muted small text-center mt-4 mb-0">
+            İlk kurulumda <code>admin</code> hesabı oluşturulur.
+        </p>
+    </div>
+
+    <div class="login-foot">
+        Refleks 360 ÜP · v3.0.0 · © @DateTime.Now.Year
     </div>
 </div>
+
+<style>
+    .login-wrap {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(ellipse at top, #EEF2FF 0%, #F8FAFC 60%);
+        padding: 2rem 1rem;
+    }
+    .login-card {
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
+        padding: 2.5rem 2rem;
+        width: 100%;
+        max-width: 26rem;
+        border: 1px solid var(--r360-border);
+    }
+    .login-brand {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .brand-icon-lg {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #4F46E5, #818CF8);
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 10px 25px -5px rgba(79,70,229,0.4);
+    }
+    .login-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--r360-text);
+    }
+    .login-sub {
+        color: var(--r360-text-muted);
+        font-size: 0.875rem;
+        margin: 0.25rem 0 0;
+    }
+    .login-foot {
+        margin-top: 1.5rem;
+        color: var(--r360-text-soft);
+        font-size: 0.75rem;
+    }
+</style>
 
 @code {
     [SupplyParameterFromQuery] public string? Error { get; set; }

@@ -187,30 +187,25 @@ public sealed class ScenarioService(CompDbContext db, ITaxParameterService taxPa
         var paramsForCalc = taxYear.Parameters;
         var periodsByMonth = taxYear.PeriodsByMonth;
 
-        decimal AvgAnnualEmployerCost(decimal gross)
-        {
-            decimal cum = 0m, total = 0m;
-            for (int m = 1; m <= 12; m++)
-            {
-                var period = periodsByMonth[m];
-                var res = SalaryCalculator.CalculateMonth(gross, cum, period, paramsForCalc);
-                total += res.EmployerCost;
-                cum += res.MonthlyTaxBase;
-            }
-            return Math.Round(total / 12m, 2);
-        }
+        // İşveren maliyeti + net tek 12-aylık döngüde — memoize ile (aynı brüt birden fazla kez gelirse)
+        var memo = new Dictionary<decimal, (decimal AvgNet, decimal AvgEmployerCost)>();
 
-        decimal AvgAnnualNet(decimal gross)
+        (decimal avgNet, decimal avgEmpCost) AvgAnnual(decimal gross)
         {
-            decimal cum = 0m, total = 0m;
+            if (memo.TryGetValue(gross, out var cached)) return cached;
+
+            decimal cum = 0m, sumNet = 0m, sumCost = 0m;
             for (int m = 1; m <= 12; m++)
             {
                 var period = periodsByMonth[m];
                 var res = SalaryCalculator.CalculateMonth(gross, cum, period, paramsForCalc);
-                total += res.Net;
+                sumNet += res.Net;
+                sumCost += res.EmployerCost;
                 cum += res.MonthlyTaxBase;
             }
-            return Math.Round(total / 12m, 2);
+            var result = (Math.Round(sumNet / 12m, 2), Math.Round(sumCost / 12m, 2));
+            memo[gross] = result;
+            return result;
         }
 
         // 4) Scenario + ScenarioEmployee'leri DB'ye yaz
@@ -234,16 +229,18 @@ public sealed class ScenarioService(CompDbContext db, ITaxParameterService taxPa
             decimal oldGross = emp.CurrentGross!.Value;
             var r = raiseByEmp[emp.Id];
             decimal newGross = r.newGross;
+            var oldVals = AvgAnnual(oldGross);
+            var newVals = AvgAnnual(newGross);
             scRows.Add(new ScenarioEmployeeEntity
             {
                 ScenarioId = scenario.Id,
                 EmployeeId = emp.Id,
                 OldGross = oldGross,
                 NewGross = newGross,
-                OldNetMonthly = AvgAnnualNet(oldGross),
-                NewNetMonthly = AvgAnnualNet(newGross),
-                OldEmployerCost = AvgAnnualEmployerCost(oldGross),
-                NewEmployerCost = AvgAnnualEmployerCost(newGross),
+                OldNetMonthly = oldVals.avgNet,
+                NewNetMonthly = newVals.avgNet,
+                OldEmployerCost = oldVals.avgEmpCost,
+                NewEmployerCost = newVals.avgEmpCost,
                 RaisePercent = Math.Round(r.pct, 4),
                 RaiseAmount = Math.Round(newGross - oldGross, 2),
                 IsLocked = r.locked,

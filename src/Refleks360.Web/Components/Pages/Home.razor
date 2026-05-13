@@ -6,71 +6,210 @@
 @using Syncfusion.Blazor.Charts
 @inject IDashboardService Dash
 
-<PageTitle>Refleks 360 ÜP — Dashboard</PageTitle>
+<PageTitle>Refleks 360 ÜP — Genel Bakış</PageTitle>
 
-<h1 class="mb-3">Dashboard</h1>
+<div class="page-header">
+    <div>
+        <h1 class="mb-1">Genel Bakış</h1>
+        <p class="text-muted mb-0">Şirketinizin ücret politikası özet göstergeleri.</p>
+    </div>
+</div>
 
-@if (_data is null) { <p>Yükleniyor...</p> }
+@if (_data is null)
+{
+    <div class="loading">Veriler yükleniyor…</div>
+}
 else
 {
-    <div class="row g-3 mb-4">
-        <div class="col-md-2"><div class="card text-center"><div class="card-body">
-            <div class="text-muted small">Toplam Çalışan</div>
-            <div class="h3 mb-0">@_data.TotalEmployees</div>
-            <div class="small text-muted">@_data.ActiveEmployees aktif</div>
-        </div></div></div>
-        <div class="col-md-3"><div class="card text-center"><div class="card-body">
-            <div class="text-muted small">Aylık İşveren Yükü</div>
-            <div class="h3 mb-0">@_data.MonthlyEmployerCostTotal.ToString("N0") ₺</div>
-        </div></div></div>
-        <div class="col-md-2"><div class="card text-center"><div class="card-body">
-            <div class="text-muted small">Ort. Compa-Ratio</div>
-            <div class="h3 mb-0">@_data.AvgCompaRatio.ToString("F2")</div>
-        </div></div></div>
-        <div class="col-md-2"><div class="card text-center"><div class="card-body">
-            <div class="text-muted small">Onay Bekleyen</div>
-            <div class="h3 mb-0">@_data.PendingScenarios</div>
-            <div class="small text-muted">senaryo</div>
-        </div></div></div>
-        <div class="col-md-3"><div class="card text-center"><div class="card-body">
-            <div class="text-muted small">Ham Cinsiyet Pay Gap</div>
-            <div class="h3 mb-0 @(_data.PayGap.RawGapPercent > 0 ? "text-warning" : "text-success")">@_data.PayGap.RawGapPercent.ToString("F1")%</div>
-            <div class="small text-muted">E: @_data.PayGap.AvgMaleGross.ToString("N0") / K: @_data.PayGap.AvgFemaleGross.ToString("N0")</div>
-        </div></div></div>
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-emerald">
+            <div class="kpi-label">Toplam Çalışan</div>
+            <div class="kpi-value">@_data.TotalEmployees</div>
+            <div class="kpi-sub">@_data.ActiveEmployees aktif</div>
+        </div>
+        <div class="kpi-card kpi-indigo">
+            <div class="kpi-label">Aylık İşveren Yükü</div>
+            <div class="kpi-value">@_data.MonthlyEmployerCostTotal.ToString("N0") <span class="kpi-unit">₺</span></div>
+            <div class="kpi-sub">tüm aktif çalışanlar</div>
+        </div>
+        <div class="kpi-card kpi-amber">
+            <div class="kpi-label">Ortalama Compa</div>
+            <div class="kpi-value">@_data.AvgCompaRatio.ToString("F2")</div>
+            <div class="kpi-sub">1.00 = bant ortası</div>
+        </div>
+        <div class="kpi-card kpi-cyan">
+            <div class="kpi-label">Bekleyen Onay</div>
+            <div class="kpi-value">@_data.PendingScenarios</div>
+            <div class="kpi-sub">senaryo</div>
+        </div>
+        <div class="kpi-card @(_data.PayGap.RawGapPercent > 5 ? "kpi-rose" : "kpi-emerald")">
+            <div class="kpi-label">Ham Cinsiyet Pay Gap</div>
+            <div class="kpi-value">@_data.PayGap.RawGapPercent.ToString("F1")<span class="kpi-unit">%</span></div>
+            <div class="kpi-sub">E @_data.PayGap.AvgMaleGross.ToString("N0") · K @_data.PayGap.AvgFemaleGross.ToString("N0")</div>
+        </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-md-7">
-            <div class="card"><div class="card-body">
-                <h2 class="h6">Departman Bazlı Aylık Maliyet</h2>
-                <SfChart Title="" Height="320">
-                    <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.Category" LabelRotation="-30" />
-                    <ChartPrimaryYAxis Title="₺" LabelFormat="N0" />
-                    <ChartSeriesCollection>
-                        <ChartSeries DataSource="@_data.CostByDepartment"
-                                     XName="@nameof(DepartmentCostSlice.Department)"
-                                     YName="@nameof(DepartmentCostSlice.MonthlyEmployerCost)"
-                                     Type="ChartSeriesType.Column"
-                                     Name="Aylık ₺" />
-                    </ChartSeriesCollection>
-                </SfChart>
-            </div></div>
-        </div>
-        <div class="col-md-5">
-            <div class="card"><div class="card-body">
-                <h2 class="h6">Hızlı Geçiş</h2>
-                <div class="d-grid gap-2">
-                    <a class="btn btn-outline-primary" href="/calisanlar">→ Çalışan Listesi</a>
-                    <a class="btn btn-outline-primary" href="/senaryolar">→ Senaryolar</a>
-                    <a class="btn btn-outline-primary" href="/admin/comp-policy">→ Comp Policy Metrikleri</a>
-                    <a class="btn btn-outline-primary" href="/simulasyon">→ İşe Alım/Çıkış Simülasyonu</a>
-                    <a class="btn btn-outline-primary" href="/admin/bantlar">→ Maaş Bantları</a>
-                    <a class="btn btn-outline-primary" href="/hesaplama">→ Maaş Hesaplama (tek kişi)</a>
+    <div class="row g-3 mt-1">
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h2 class="h6 mb-1">Departman Bazlı Aylık Maliyet</h2>
+                            <p class="text-muted small mb-0">İşveren toplam yüküne göre kırılım.</p>
+                        </div>
+                    </div>
+                    <SfChart Title="" Height="320">
+                        <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.Category" LabelRotation="-30" />
+                        <ChartPrimaryYAxis Title="₺" LabelFormat="N0" />
+                        <ChartSeriesCollection>
+                            <ChartSeries DataSource="@_data.CostByDepartment"
+                                         XName="@nameof(DepartmentCostSlice.Department)"
+                                         YName="@nameof(DepartmentCostSlice.MonthlyEmployerCost)"
+                                         Type="ChartSeriesType.Column"
+                                         Name="Aylık ₺">
+                                <ChartSeriesAnimation Enable="true" />
+                            </ChartSeries>
+                        </ChartSeriesCollection>
+                    </SfChart>
                 </div>
-            </div></div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h6 mb-3">Hızlı Erişim</h2>
+                    <div class="quick-links">
+                        <a class="quick-link" href="/calisanlar">
+                            <span class="ql-icon ql-indigo"><i class="bi bi-people"></i></span>
+                            <span>
+                                <strong>Çalışanlar</strong>
+                                <small>Liste, detay, Excel import</small>
+                            </span>
+                            <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                        </a>
+                        <a class="quick-link" href="/senaryolar">
+                            <span class="ql-icon ql-emerald"><i class="bi bi-layers"></i></span>
+                            <span>
+                                <strong>Senaryolar</strong>
+                                <small>Zam senaryoları + uygulama</small>
+                            </span>
+                            <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                        </a>
+                        <a class="quick-link" href="/admin/comp-policy">
+                            <span class="ql-icon ql-amber"><i class="bi bi-bar-chart"></i></span>
+                            <span>
+                                <strong>Comp Policy</strong>
+                                <small>Histogram, quartile, bant dışı</small>
+                            </span>
+                            <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                        </a>
+                        <a class="quick-link" href="/simulasyon">
+                            <span class="ql-icon ql-cyan"><i class="bi bi-arrow-left-right"></i></span>
+                            <span>
+                                <strong>Simülasyon</strong>
+                                <small>İşe alım/ayrılış etkisi</small>
+                            </span>
+                            <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                        </a>
+                        <a class="quick-link" href="/raporlar">
+                            <span class="ql-icon ql-rose"><i class="bi bi-file-earmark-bar-graph"></i></span>
+                            <span>
+                                <strong>Raporlar</strong>
+                                <small>Excel/PDF export</small>
+                            </span>
+                            <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 }
+
+<style>
+    .page-header { margin-bottom: 1.5rem; }
+    .loading { padding: 4rem; text-align: center; color: var(--r360-text-muted); }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .kpi-card {
+        background: white;
+        border: 1px solid var(--r360-border);
+        border-radius: var(--r360-radius);
+        padding: 1.25rem 1.4rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--r360-shadow-sm);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .kpi-card:hover { transform: translateY(-1px); box-shadow: var(--r360-shadow); }
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+    }
+    .kpi-indigo::before { background: #4F46E5; }
+    .kpi-emerald::before { background: #10B981; }
+    .kpi-amber::before { background: #F59E0B; }
+    .kpi-cyan::before { background: #06B6D4; }
+    .kpi-rose::before { background: #F43F5E; }
+
+    .kpi-label {
+        font-size: 0.825rem;
+        font-weight: 600;
+        color: var(--r360-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--r360-text);
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+    }
+    .kpi-value .kpi-unit { font-size: 1.05rem; color: var(--r360-text-muted); font-weight: 500; margin-left: 0.15rem; }
+    .kpi-sub { font-size: 0.875rem; color: var(--r360-text-muted); margin-top: 0.45rem; }
+
+    .quick-links { display: flex; flex-direction: column; gap: 0.4rem; }
+    .quick-link {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        padding: 0.75rem 0.85rem;
+        border-radius: var(--r360-radius-sm);
+        text-decoration: none;
+        color: var(--r360-text);
+        transition: background 0.12s ease;
+    }
+    .quick-link:hover { background: var(--r360-bg); text-decoration: none; color: var(--r360-text); }
+    .quick-link strong { display: block; font-weight: 600; font-size: 1rem; }
+    .quick-link small { color: var(--r360-text-muted); font-size: 0.85rem; display: block; }
+    .ql-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        flex-shrink: 0;
+    }
+    .ql-indigo { background: var(--r360-primary-soft); color: var(--r360-primary); }
+    .ql-emerald { background: #D1FAE5; color: #059669; }
+    .ql-amber { background: #FEF3C7; color: #D97706; }
+    .ql-cyan { background: #CFFAFE; color: #0891B2; }
+    .ql-rose { background: #FFE4E6; color: #E11D48; }
+</style>
 
 @code {
     private DashboardSummary? _data;

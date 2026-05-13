@@ -1,17 +1,29 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Refleks360.Application.Abstractions;
 using Refleks360.Application.Employees;
 using Refleks360.Infrastructure.Persistence;
 
 namespace Refleks360.Infrastructure.Services;
 
-public sealed class EmployeeQueryService(CompDbContext db) : IEmployeeQueryService
+public sealed class EmployeeQueryService(IDbContextFactory<CompDbContext> dbFactory, IMemoryCache cache) : IEmployeeQueryService
 {
+    private const string CacheKey = "employee-list-with-compa";
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
+
     public async Task<IReadOnlyList<EmployeeListItem>> GetAllAsync(CancellationToken ct = default)
     {
-        // 1) Çalışanlar + pozisyon/grade/dept/lokasyon
+        if (cache.TryGetValue<IReadOnlyList<EmployeeListItem>>(CacheKey, out var cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+
+        // 1) Çalışanlar + ilişkiler — AsSplitQuery: çok büyük join yerine 2-3 küçük sorgu
         var people = await db.Employees
             .AsNoTracking()
+            .AsSplitQuery()
             .OrderBy(e => e.LastName).ThenBy(e => e.FirstName)
             .Select(e => new
             {
@@ -30,22 +42,29 @@ public sealed class EmployeeQueryService(CompDbContext db) : IEmployeeQueryServi
             })
             .ToListAsync(ct);
 
-        if (people.Count == 0) return Array.Empty<EmployeeListItem>();
+        if (people.Count == 0)
+        {
+            var empty = Array.Empty<EmployeeListItem>();
+            cache.Set(CacheKey, (IReadOnlyList<EmployeeListItem>)empty, CacheTtl);
+            return empty;
+        }
 
-        // 2) Mevcut ücretler (EndDate=null olan satırlar)
+        // 2) Mevcut ücretler
         var currentSalaries = await db.EmployeeSalaries
             .AsNoTracking()
             .Where(s => s.EndDate == null)
+            .Select(s => new { s.EmployeeId, s.GrossMonthly })
             .ToDictionaryAsync(s => s.EmployeeId, s => s.GrossMonthly, ct);
 
-        // 3) Geçerli bantlar (lokasyon yoksa null'a düşer)
+        // 3) Geçerli bantlar
         var bands = await db.SalaryBands.AsNoTracking()
             .Where(b => b.EndDate == null)
+            .Select(b => new { b.JobGradeId, b.LocationId, b.Min, b.Mid, b.Max })
             .ToListAsync(ct);
 
         var bandByGradeLocation = bands.ToDictionary(b => (b.JobGradeId, b.LocationId), b => b);
 
-        return people.Select(p =>
+        var result = people.Select(p =>
         {
             decimal? gross = currentSalaries.TryGetValue(p.Id, out var g) ? g : null;
             decimal? compa = null, penetration = null;
@@ -53,7 +72,6 @@ public sealed class EmployeeQueryService(CompDbContext db) : IEmployeeQueryServi
 
             if (gross.HasValue)
             {
-                // Önce lokasyon bandı, yoksa genel band
                 var band = bandByGradeLocation.TryGetValue((p.JobGradeId, p.LocationId), out var b1)
                     ? b1
                     : bandByGradeLocation.TryGetValue((p.JobGradeId, (int?)null), out var b2) ? b2 : null;
@@ -71,5 +89,8 @@ public sealed class EmployeeQueryService(CompDbContext db) : IEmployeeQueryServi
                 p.DepartmentName, p.LocationCity, p.Status, p.Gender, p.HireDate,
                 gross, compa, penetration, flag);
         }).ToList();
+
+        cache.Set(CacheKey, (IReadOnlyList<EmployeeListItem>)result, CacheTtl);
+        return result;
     }
 }

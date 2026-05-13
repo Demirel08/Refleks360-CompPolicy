@@ -1,10 +1,11 @@
 using MediatR;
 using Refleks360.Application.Employees.Commands;
 using Refleks360.Infrastructure.Persistence;
+using Refleks360.Infrastructure.Services;
 
 namespace Refleks360.Infrastructure.Handlers.Employees;
 
-internal sealed class UpdateEmployeeHandler(CompDbContext db)
+internal sealed class UpdateEmployeeHandler(CompDbContext db, CacheInvalidator cacheInvalidator)
     : IRequestHandler<UpdateEmployeeCommand, Unit>
 {
     public async Task<Unit> Handle(UpdateEmployeeCommand request, CancellationToken ct)
@@ -31,6 +32,7 @@ internal sealed class UpdateEmployeeHandler(CompDbContext db)
         entity.Notes = request.Notes;
 
         await db.SaveChangesAsync(ct);
+        cacheInvalidator.InvalidateEmployees();
         return Unit.Value;
     }
 }

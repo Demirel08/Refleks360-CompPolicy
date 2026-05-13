@@ -259,6 +259,8 @@ public sealed class CompDbContext(DbContextOptions<CompDbContext> options)
             b.Property(e => e.ChangeAmount).HasColumnType("decimal(18,2)");
             b.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Cascade);
             b.HasIndex(e => new { e.EmployeeId, e.EffectiveDate });
+            // Hot path: "EndDate IS NULL" filtreli current salary lookup
+            b.HasIndex(e => new { e.EmployeeId, e.EndDate });
         });
 
         modelBuilder.Entity<ScenarioEntity>(b =>

@@ -66,6 +66,7 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<CompDbContext>()
             .AddDefaultTokenProviders();
 
+        services.AddSingleton<CacheInvalidator>();
         services.AddScoped<ITaxParameterService, TaxParameterService>();
         services.AddScoped<IEmployeeQueryService, EmployeeQueryService>();
         services.AddScoped<IOrganizationLookupService, OrganizationLookupService>();
