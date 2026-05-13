@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Refleks360.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using Refleks360.Infrastructure.Persistence;
 namespace Refleks360.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CompDbContext))]
-    partial class CompDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260513120159_FixSgkEmployerRate2025")]
+    partial class FixSgkEmployerRate2025
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

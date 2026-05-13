@@ -30,7 +30,9 @@ internal static class TaxParameters2026Seed
             Year = Year2026,
             SgkEmployeeRate = 0.14m,
             UnemploymentEmployeeRate = 0.01m,
-            SgkEmployerRate = 0.2075m,
+            // 2025 sonrası: GSS işveren payı %7,5 -> %8,5 oldu. Toplam SGK işveren primi
+            // %20,75'ten %21,75'e çıktı. Verginet.net ve diğer güncel hesaplayıcılar bu oranı kullanır.
+            SgkEmployerRate = 0.2175m,
             UnemploymentEmployerRate = 0.02m,
             SgkEmployerDiscountRate = 0.05m,
             ApplySgkEmployerDiscount = false,
