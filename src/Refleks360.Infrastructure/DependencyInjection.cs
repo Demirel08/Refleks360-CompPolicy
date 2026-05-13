@@ -28,12 +28,23 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException(
                 "ConnectionStrings:Default ayarlı değil. user-secrets veya appsettings içinden ekle.");
 
+        // Hem scoped DbContext, hem de DbContextFactory kaydet.
+        // Blazor Server'da layout + page aynı DbContext'i paralel kullanırsa
+        // concurrency hatasi alir; factory'den fresh context isteyen servisler
+        // (HttpCurrentCompanyContext) bu sorundan etkilenmez.
         services.AddDbContext<CompDbContext>((sp, options) =>
         {
             options.UseSqlServer(connectionString, sql =>
                 sql.MigrationsAssembly(typeof(CompDbContext).Assembly.FullName));
             options.AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>());
         });
+
+        services.AddDbContextFactory<CompDbContext>((sp, options) =>
+        {
+            options.UseSqlServer(connectionString, sql =>
+                sql.MigrationsAssembly(typeof(CompDbContext).Assembly.FullName));
+            options.AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>());
+        }, ServiceLifetime.Scoped);
 
         services.AddScoped<AuditSaveChangesInterceptor>();
 

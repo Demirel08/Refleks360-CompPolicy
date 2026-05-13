@@ -7,8 +7,12 @@ namespace Refleks360.Web.Auth;
 /// <summary>
 /// HTTP cookie tabanlı şirket seçimi. Default: kullanıcının erişebildiği ilk şirket
 /// (şu an tek şirket seed'li olduğu için 1). Cookie adı: "Refleks360.Company".
+///
+/// MainLayout aynı SignalR circuit'te scoped DbContext'i page ile paylaşabildiği için
+/// concurrency hatasını önlemek üzere <see cref="IDbContextFactory{TContext}"/>
+/// kullanılır (her çağrı için fresh DbContext).
 /// </summary>
-public sealed class HttpCurrentCompanyContext(IHttpContextAccessor http, CompDbContext db) : ICurrentCompanyContext
+public sealed class HttpCurrentCompanyContext(IHttpContextAccessor http, IDbContextFactory<CompDbContext> dbFactory) : ICurrentCompanyContext
 {
     private const string CookieName = "Refleks360.Company";
 
@@ -34,7 +38,7 @@ public sealed class HttpCurrentCompanyContext(IHttpContextAccessor http, CompDbC
 
     public async Task<IReadOnlyList<CompanyOption>> GetAccessibleCompaniesAsync(CancellationToken ct = default)
     {
-        // Şu an basitleştirilmiş: aktif tüm şirketler. Ileride UserCompanyAccess tablosu ile sinirlanabilir.
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         return await db.Companies.AsNoTracking()
             .Where(c => c.IsActive)
             .OrderBy(c => c.Name)
